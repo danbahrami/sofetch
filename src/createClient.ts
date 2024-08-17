@@ -122,7 +122,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
                         } catch (e) {
                             const error = new JsonParseError(
                                 request,
-                                response.clone(),
+                                response,
                                 e
                             );
                             await callbacks.onJsonParseError.emit({
