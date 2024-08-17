@@ -19,12 +19,21 @@ export const createClient = (options: ClientOptions = {}): Client => {
      * Setup our callback registry
      */
     const callbacks = {
-        onRequestStart: callbackStore<Callbacks["onRequestStart"]>(),
-        onSuccessResponse: callbackStore<Callbacks["onSuccessResponse"]>(),
-        onErrorResponse: callbackStore<Callbacks["onErrorResponse"]>(),
-        onJsonParseError: callbackStore<Callbacks["onJsonParseError"]>(),
-        onJsonStringifyError:
-            callbackStore<Callbacks["onJsonStringifyError"]>(),
+        onRequestStart: callbackStore<Callbacks["onRequestStart"]>(
+            options.callbacks?.onRequestStart
+        ),
+        onSuccessResponse: callbackStore<Callbacks["onSuccessResponse"]>(
+            options.callbacks?.onSuccessResponse
+        ),
+        onErrorResponse: callbackStore<Callbacks["onErrorResponse"]>(
+            options.callbacks?.onErrorResponse
+        ),
+        onJsonParseError: callbackStore<Callbacks["onJsonParseError"]>(
+            options.callbacks?.onJsonParseError
+        ),
+        onJsonStringifyError: callbackStore<Callbacks["onJsonStringifyError"]>(
+            options.callbacks?.onJsonStringifyError
+        ),
     };
 
     const _createMethod = (methodInit: RequestInit) => {

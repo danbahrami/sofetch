@@ -23,8 +23,10 @@ export const combineInits = (inits: RequestInit[]) => {
  */
 export const callbackStore = <
     TFn extends (arg: any) => Promise<void> | void, // eslint-disable-line @typescript-eslint/no-explicit-any
->() => {
-    const store = new Set<TFn>();
+>(
+    initial?: TFn
+) => {
+    const store = new Set<TFn>(initial ? [initial] : undefined);
 
     return {
         register: (cb: TFn) => {
