@@ -949,3 +949,43 @@ describe("beforeSuccessResponse modifier", () => {
         unsubscribe5();
     });
 });
+
+describe("beforeErrorResponse modifier", () => {
+    test("It lets you modify the response error before its thrown", async () => {
+        nock(HOST).get("/api/user").reply(404);
+
+        // Add a modifier which mutates the error and return undefined
+        const unsubscribe1 = f.modifiers.beforeErrorResponse(({ error }) => {
+            error.message = "This is not what I had planned";
+        });
+
+        const onErrorResponseSpy = vi.fn<Callbacks["onErrorResponse"]>();
+        const unsubscribe2 = f.callbacks.onErrorResponse(onErrorResponseSpy);
+
+        try {
+            await f.get(HOST + "/api/user");
+            expect(true).toBe(false); // Fail the test if no error is thrown
+        } catch (e) {
+            expect(e).toBeInstanceOf(HttpError);
+
+            const error = e as HttpError;
+
+            expect(error.statusCode).toBe(404);
+            expect(error.message).toBe("This is not what I had planned");
+        }
+
+        // get the request that was passed to onRequestStart and make sure it
+        // has all the modifications we applied
+        const e = onErrorResponseSpy.mock.calls[0][0].error;
+
+        expect(e).toBeInstanceOf(HttpError);
+
+        const error = e as HttpError;
+
+        expect(error.statusCode).toBe(404);
+        expect(error.message).toBe("This is not what I had planned");
+
+        unsubscribe1();
+        unsubscribe2();
+    });
+});

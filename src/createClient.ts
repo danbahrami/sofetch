@@ -47,6 +47,9 @@ export const createClient = (options: ClientOptions = {}): Client => {
         beforeSuccessResponse: callbackStore<
             Modifiers["beforeSuccessResponse"]
         >(options.modifiers?.beforeSuccessResponse),
+        beforeErrorResponse: callbackStore<Modifiers["beforeErrorResponse"]>(
+            options.modifiers?.beforeErrorResponse
+        ),
     };
 
     const _createMethod = (methodInit: RequestInit) => {
@@ -95,9 +98,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
                  * and then passing it through any `beforeRequest` modifiers
                  */
                 const request = await modifiers.beforeRequest.reduce(
-                    (accumulator, modifier) => {
-                        return modifier({ request: accumulator });
-                    },
+                    (acc, cb) => cb({ request: acc }),
                     new Request(info, combinedRequestInit)
                 );
 
@@ -110,15 +111,21 @@ export const createClient = (options: ClientOptions = {}): Client => {
                     /**
                      * Make the request
                      */
+                    let baseResponse: Response;
+                    try {
+                        baseResponse = await fetch(request);
+                    } catch (e) {
+                        throw new NetworkError(request, e);
+                    }
+
+                    /**
+                     * Form the final response by piping it through all
+                     * beforeSuccessResponse modifiers
+                     */
                     const response =
                         await modifiers.beforeSuccessResponse.reduce(
-                            (accumulator, modifier) => {
-                                return modifier({
-                                    request,
-                                    response: accumulator,
-                                });
-                            },
-                            await fetch(request)
+                            (acc, cb) => cb({ request, response: acc }),
+                            baseResponse
                         );
 
                     /**
@@ -168,20 +175,22 @@ export const createClient = (options: ClientOptions = {}): Client => {
                     /**
                      * Emit and rethrow HttpErrors
                      */
-                    if (e instanceof HttpError) {
+                    if (e instanceof HttpError || e instanceof NetworkError) {
+                        const error =
+                            await modifiers.beforeErrorResponse.reduce(
+                                (acc, cb) => cb({ request, error: acc }),
+                                e
+                            );
+
                         await callbacks.onErrorResponse.emit({
                             request,
-                            error: e,
+                            error,
                         });
-                        throw e;
+
+                        throw error;
                     }
 
-                    /**
-                     * Convert all other errors into a NetworkError, emit and throw
-                     */
-                    const error = new NetworkError(request, e);
-                    await callbacks.onErrorResponse.emit({ request, error });
-                    throw error;
+                    throw e;
                 }
             })() as DecoratedResponsePromise;
 
@@ -250,6 +259,8 @@ export const createClient = (options: ClientOptions = {}): Client => {
             beforeRequest: cb => modifiers.beforeRequest.register(cb),
             beforeSuccessResponse: cb =>
                 modifiers.beforeSuccessResponse.register(cb),
+            beforeErrorResponse: cb =>
+                modifiers.beforeErrorResponse.register(cb),
         },
     };
 };

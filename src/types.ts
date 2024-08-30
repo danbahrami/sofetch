@@ -1,4 +1,9 @@
-import { JsonParseError, JsonStringifyError } from "./errors";
+import {
+    HttpError,
+    JsonParseError,
+    JsonStringifyError,
+    NetworkError,
+} from "./errors";
 
 export type SoFetchRequestInit = Omit<RequestInit, "method"> & {
     json?: unknown;
@@ -12,7 +17,7 @@ export type Callbacks = {
     }) => Promise<void> | void;
     onErrorResponse: (details: {
         request: Request;
-        error: HttpError | NetworkError;
+        error: HttpError | NetworkError | Error;
     }) => Promise<void> | void;
     onJsonParseError: (details: {
         request: Request;
@@ -32,6 +37,10 @@ export type Modifiers = {
         request: Request;
         response: Response;
     }) => Promise<Response> | Promise<void> | Response | void;
+    beforeErrorResponse: (details: {
+        request: Request;
+        error: Error;
+    }) => Promise<Error> | Promise<void> | Error | void;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -137,6 +146,7 @@ export type Client = {
     modifiers: {
         beforeRequest: Subscription<Modifiers["beforeRequest"]>;
         beforeSuccessResponse: Subscription<Modifiers["beforeSuccessResponse"]>;
+        beforeErrorResponse: Subscription<Modifiers["beforeErrorResponse"]>;
     };
 };
 
@@ -160,5 +170,6 @@ export type ClientOptions = {
     modifiers?: {
         beforeRequest?: Modifiers["beforeRequest"];
         beforeSuccessResponse?: Modifiers["beforeSuccessResponse"];
+        beforeErrorResponse?: Modifiers["beforeErrorResponse"];
     };
 };
