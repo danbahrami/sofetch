@@ -870,3 +870,71 @@ describe("beforeRequest modifier", () => {
         unsubscribe5();
     });
 });
+
+describe("beforeSuccessResponse modifier", () => {
+    test("It lets you modify the response before its returned", async () => {
+        nock(HOST).get("/api/user").reply(200, { id: "567" });
+
+        // Add a modifier which mutates the response and return undefined
+        const unsubscribe1 = f.modifiers.beforeSuccessResponse(
+            ({ response }) => {
+                response.headers.set("test-header-1", "11-11-11");
+            }
+        );
+
+        // Add a modifier which returns a new response
+        const unsubscribe2 = f.modifiers.beforeSuccessResponse(
+            ({ response }) => {
+                const updated = response.clone();
+                updated.headers.set("test-header-2", "22-22-22");
+                return updated;
+            }
+        );
+
+        // Add an async modifier which mutates the response and returns undefined
+        const unsubscribe3 = f.modifiers.beforeSuccessResponse(
+            async ({ response }) => {
+                await Promise.resolve();
+                response.headers.set("test-header-3", "33-33-33");
+            }
+        );
+
+        // Add an async modifier which returns a new request
+        const unsubscribe4 = f.modifiers.beforeSuccessResponse(
+            async ({ response }) => {
+                await Promise.resolve();
+                const updated = response.clone();
+                updated.headers.set("test-header-4", "44-44-44");
+                return updated;
+            }
+        );
+
+        const onSuccessResponseSpy = vi.fn<Callbacks["onSuccessResponse"]>();
+        const unsubscribe5 =
+            f.callbacks.onSuccessResponse(onSuccessResponseSpy);
+
+        const response = await f.get(HOST + "/api/user");
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("test-header-1")).toBe("11-11-11");
+        expect(response.headers.get("test-header-2")).toBe("22-22-22");
+        expect(response.headers.get("test-header-3")).toBe("33-33-33");
+        expect(response.headers.get("test-header-4")).toBe("44-44-44");
+
+        // get the request that was passed to onRequestStart and make sure it
+        // has all the modifications we applied
+        const spyResponse = onSuccessResponseSpy.mock.calls[0][0].response;
+
+        expect(spyResponse.status).toBe(200);
+        expect(spyResponse.headers.get("test-header-1")).toBe("11-11-11");
+        expect(spyResponse.headers.get("test-header-2")).toBe("22-22-22");
+        expect(spyResponse.headers.get("test-header-3")).toBe("33-33-33");
+        expect(spyResponse.headers.get("test-header-4")).toBe("44-44-44");
+
+        unsubscribe1();
+        unsubscribe2();
+        unsubscribe3();
+        unsubscribe4();
+        unsubscribe5();
+    });
+});

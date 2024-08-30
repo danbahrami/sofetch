@@ -38,6 +38,10 @@ export type Modifiers = {
     beforeRequest: (details: {
         request: Request;
     }) => Promise<Request> | Promise<void> | Request | void;
+    beforeSuccessResponse: (details: {
+        request: Request;
+        response: Response;
+    }) => Promise<Response> | Promise<void> | Response | void;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,6 +146,7 @@ export type Client = {
 
     modifiers: {
         beforeRequest: Subscription<Modifiers["beforeRequest"]>;
+        beforeSuccessResponse: Subscription<Modifiers["beforeSuccessResponse"]>;
     };
 };
 
@@ -164,5 +169,6 @@ export type ClientOptions = {
     };
     modifiers?: {
         beforeRequest?: Modifiers["beforeRequest"];
+        beforeSuccessResponse?: Modifiers["beforeSuccessResponse"];
     };
 };

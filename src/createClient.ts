@@ -44,6 +44,9 @@ export const createClient = (options: ClientOptions = {}): Client => {
         beforeRequest: callbackStore<Modifiers["beforeRequest"]>(
             options.modifiers?.beforeRequest
         ),
+        beforeSuccessResponse: callbackStore<
+            Modifiers["beforeSuccessResponse"]
+        >(options.modifiers?.beforeSuccessResponse),
     };
 
     const _createMethod = (methodInit: RequestInit) => {
@@ -105,7 +108,16 @@ export const createClient = (options: ClientOptions = {}): Client => {
                     /**
                      * Make the request
                      */
-                    const response = await fetch(request);
+                    const response =
+                        await modifiers.beforeSuccessResponse.reduce(
+                            (accumulator, modifier) => {
+                                return modifier({
+                                    request,
+                                    response: accumulator,
+                                });
+                            },
+                            await fetch(request)
+                        );
 
                     /**
                      * Convert non `2xx` responses into an HttpError
@@ -234,6 +246,8 @@ export const createClient = (options: ClientOptions = {}): Client => {
 
         modifiers: {
             beforeRequest: cb => modifiers.beforeRequest.register(cb),
+            beforeSuccessResponse: cb =>
+                modifiers.beforeSuccessResponse.register(cb),
         },
     };
 };
