@@ -214,8 +214,6 @@ describe("f.post()", () => {
     });
 
     test("If you try to post non-serializeable JSON data it throws a JsonStringifyError", async () => {
-        nock(HOST).post("/api/user").reply(200, { id: "567" });
-
         try {
             await f.post(HOST + "/api/user", {
                 json: {
@@ -235,8 +233,6 @@ describe("f.post()", () => {
     });
 
     test("JsonStringifyError when you await the request, not when you make the request", async () => {
-        nock(HOST).post("/api/user").reply(200, { id: "567" });
-
         const request = f.post(HOST + "/api/user", {
             json: {
                 // JS doesn't know how to parse a BigInt into JSON
@@ -779,8 +775,6 @@ describe("onJsonStringifyError callback", () => {
         const unsubscribe1 = f.callbacks.onJsonStringifyError(callback1);
         const unsubscribe2 = f.callbacks.onJsonStringifyError(callback2);
 
-        nock(HOST).get("/api/user").reply(200, "Oh hello");
-
         try {
             await f.post(HOST + "/api/user", {
                 json: {
@@ -807,7 +801,7 @@ describe("onJsonStringifyError callback", () => {
         const unsubscribe1 = f.callbacks.onJsonStringifyError(callback1);
         const unsubscribe2 = f.callbacks.onJsonStringifyError(callback2);
 
-        nock(HOST).get("/api/user").reply(200, "Oh hello");
+        nock(HOST).post("/api/user").reply(200, "Oh hello");
 
         try {
             await f.post(HOST + "/api/user", {
