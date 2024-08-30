@@ -10,6 +10,7 @@ import {
     ClientOptions,
     DecoratedResponse,
     DecoratedResponsePromise,
+    Modifiers,
     SoFetchRequestInit,
 } from "@/types";
 import { callbackStore, combineInits } from "@/utils";
@@ -33,6 +34,15 @@ export const createClient = (options: ClientOptions = {}): Client => {
         ),
         onJsonStringifyError: callbackStore<Callbacks["onJsonStringifyError"]>(
             options.callbacks?.onJsonStringifyError
+        ),
+    };
+
+    /**
+     * Setup our modifiers registry
+     */
+    const modifiers = {
+        beforeRequest: callbackStore<Modifiers["beforeRequest"]>(
+            options.modifiers?.beforeRequest
         ),
     };
 
@@ -76,9 +86,15 @@ export const createClient = (options: ClientOptions = {}): Client => {
                 }
 
                 /**
-                 * Build the request
+                 * Build the request by first combining all the request options
+                 * and then passing it through any `beforeRequest` modifiers
                  */
-                const request = new Request(info, combinedRequestInit);
+                const request = await modifiers.beforeRequest.reduce(
+                    (accumulator, modifier) => {
+                        return modifier({ request: accumulator });
+                    },
+                    new Request(info, combinedRequestInit)
+                );
 
                 try {
                     /**
@@ -214,6 +230,10 @@ export const createClient = (options: ClientOptions = {}): Client => {
             onJsonParseError: cb => callbacks.onJsonParseError.register(cb),
             onJsonStringifyError: cb =>
                 callbacks.onJsonStringifyError.register(cb),
+        },
+
+        modifiers: {
+            beforeRequest: cb => modifiers.beforeRequest.register(cb),
         },
     };
 };

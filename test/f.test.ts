@@ -8,6 +8,7 @@ import {
     JsonStringifyError,
     NetworkError,
 } from "../src";
+import { Callbacks } from "@/types";
 
 type User = {
     firstName: string;
@@ -807,5 +808,65 @@ describe("onJsonStringifyError callback", () => {
 
         unsubscribe1();
         unsubscribe2();
+    });
+});
+
+describe("beforeRequest modifier", () => {
+    test("It lets you modify the request before its sent", async () => {
+        nock(HOST)
+            .post("/api/user")
+            .matchHeader("test-header-0", "00-00-00")
+            .matchHeader("test-header-1", "11-11-11")
+            .matchHeader("test-header-2", "22-22-22")
+            .reply(200, { id: "567" });
+
+        // Add a modifier which mutates the request and return undefined
+        const unsubscribe1 = f.modifiers.beforeRequest(({ request }) => {
+            request.headers.set("test-header-1", "11-11-11");
+        });
+
+        // Add a modifier which returns a new request
+        const unsubscribe2 = f.modifiers.beforeRequest(({ request }) => {
+            return new Request(request, { method: "POST" });
+        });
+
+        // Add an async modifier which mutates the request and returns undefined
+        const unsubscribe3 = f.modifiers.beforeRequest(async ({ request }) => {
+            await Promise.resolve();
+            request.headers.set("test-header-2", "22-22-22");
+        });
+
+        // Add an async modifier which returns a new request
+        const unsubscribe4 = f.modifiers.beforeRequest(async ({ request }) => {
+            await Promise.resolve();
+            return new Request(HOST + "/api/user", {
+                method: request.method,
+                headers: request.headers,
+            });
+        });
+
+        const onRequestStartSpy = vi.fn<Callbacks["onRequestStart"]>();
+        const unsubscribe5 = f.callbacks.onRequestStart(onRequestStartSpy);
+
+        await f.get(HOST + "/api/organisation", {
+            headers: {
+                "test-header-0": "00-00-00",
+            },
+        });
+
+        // get the request that was passed to onRequestStart and make sure it
+        // has all the modifications we applied
+        const r = onRequestStartSpy.mock.calls[0][0].request;
+        expect(r.method).toBe("POST");
+        expect(r.url).toBe(HOST + "/api/user");
+        expect(r.headers.get("test-header-0")).toBe("00-00-00");
+        expect(r.headers.get("test-header-1")).toBe("11-11-11");
+        expect(r.headers.get("test-header-2")).toBe("22-22-22");
+
+        unsubscribe1();
+        unsubscribe2();
+        unsubscribe3();
+        unsubscribe4();
+        unsubscribe5();
     });
 });

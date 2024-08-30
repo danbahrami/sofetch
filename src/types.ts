@@ -34,10 +34,14 @@ export type Callbacks = {
     }) => Promise<void> | void;
 };
 
+export type Modifiers = {
+    beforeRequest: (details: {
+        request: Request;
+    }) => Promise<Request> | Promise<void> | Request | void;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Subscription<T extends (arg: any) => Promise<void> | void> = (
-    arg: T
-) => () => void;
+type Subscription<T extends (arg: any) => any> = (arg: T) => () => void;
 
 /**
  * This type enhances the default Response type so that you can pass a generic
@@ -135,6 +139,10 @@ export type Client = {
         onJsonParseError: Subscription<Callbacks["onJsonParseError"]>;
         onJsonStringifyError: Subscription<Callbacks["onJsonStringifyError"]>;
     };
+
+    modifiers: {
+        beforeRequest: Subscription<Modifiers["beforeRequest"]>;
+    };
 };
 
 export type ClientOptions = {
@@ -153,5 +161,8 @@ export type ClientOptions = {
         onErrorResponse?: Callbacks["onErrorResponse"];
         onJsonParseError?: Callbacks["onJsonParseError"];
         onJsonStringifyError?: Callbacks["onJsonStringifyError"];
+    };
+    modifiers?: {
+        beforeRequest?: Modifiers["beforeRequest"];
     };
 };
