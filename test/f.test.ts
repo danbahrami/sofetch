@@ -179,7 +179,7 @@ describe("f.get()", () => {
 });
 
 describe("f.post()", () => {
-    test("It performs a POST request with some standard headers and returns a response", async () => {
+    test("It performs a POST request and returns a response", async () => {
         nock(HOST)
             .post("/api/user", { firstName: "Mad Dog", lastName: "Mcrea" })
             .reply(200, { id: "567" });
@@ -237,7 +237,7 @@ describe("f.post()", () => {
 });
 
 describe("f.put()", () => {
-    test("It performs a PUT request with some standard headers and returns a response", async () => {
+    test("It performs a PUT request and returns a response", async () => {
         nock(HOST)
             .put("/api/user", { firstName: "Mad Dog", lastName: "Mcrea" })
             .reply(200, { id: "567" });
@@ -254,7 +254,7 @@ describe("f.put()", () => {
 });
 
 describe("f.patch()", () => {
-    test("It performs a PATCH request with some standard headers and returns a response", async () => {
+    test("It performs a PATCH request and returns a response", async () => {
         nock(HOST)
             .patch("/api/user", { firstName: "Mad Dog", lastName: "Mcrea" })
             .reply(200, { id: "567" });
@@ -271,7 +271,7 @@ describe("f.patch()", () => {
 });
 
 describe("f.delete()", () => {
-    test("It performs a DELETE request with some standard headers and returns a response", async () => {
+    test("It performs a DELETE request and returns a response", async () => {
         nock(HOST)
             .delete("/api/user", { id: "4" })
             .reply(200, { success: true });
@@ -279,6 +279,32 @@ describe("f.delete()", () => {
         const response = await f.delete(HOST + "/api/user", {
             json: { id: "4" },
         });
+
+        expect(response).toBeInstanceOf(Response);
+        expect(response.status).toBe(200);
+        expect(response.statusText).toBe("OK");
+        expect(await response.json()).toEqual({ success: true });
+    });
+});
+
+describe("f.options()", () => {
+    test("It performs an OPTIONS request and returns a response", async () => {
+        nock(HOST).options("/api/user").reply(200, { success: true });
+
+        const response = await f.options(HOST + "/api/user");
+
+        expect(response).toBeInstanceOf(Response);
+        expect(response.status).toBe(200);
+        expect(response.statusText).toBe("OK");
+        expect(await response.json()).toEqual({ success: true });
+    });
+});
+
+describe("f.head()", () => {
+    test("It performs an HEAD request and returns a response", async () => {
+        nock(HOST).head("/api/user").reply(200, { success: true });
+
+        const response = await f.head(HOST + "/api/user");
 
         expect(response).toBeInstanceOf(Response);
         expect(response.status).toBe(200);

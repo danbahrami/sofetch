@@ -202,6 +202,11 @@ export const createClient = (options: ClientOptions = {}): Client => {
             ...options.defaults?.options,
         }),
 
+        head: _createMethod({
+            method: "HEAD",
+            ...options.defaults?.options,
+        }),
+
         callbacks: {
             onRequestStart: cb => callbacks.onRequestStart.register(cb),
             onSuccessResponse: cb => callbacks.onSuccessResponse.register(cb),

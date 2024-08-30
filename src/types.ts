@@ -113,9 +113,17 @@ export type Client = {
     ) => DecoratedResponsePromise;
 
     /**
-     * Perform a HTTP OPTTIONS request
+     * Perform a HTTP OPTIONS request
      */
     options: (
+        input: RequestInfo,
+        init?: SoFetchRequestInit
+    ) => DecoratedResponsePromise;
+
+    /**
+     * Perform a HTTP HEAD request
+     */
+    head: (
         input: RequestInfo,
         init?: SoFetchRequestInit
     ) => DecoratedResponsePromise;
@@ -137,6 +145,7 @@ export type ClientOptions = {
         patch: MethodDefault;
         delete: MethodDefault;
         options: MethodDefault;
+        head: MethodDefault;
     };
     callbacks?: {
         onRequestStart?: Callbacks["onRequestStart"];
