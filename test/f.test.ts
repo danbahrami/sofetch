@@ -161,7 +161,7 @@ describe("f.get()", () => {
         }
     });
 
-    test("You can set headers", async () => {
+    test("You can pass headers as an object", async () => {
         nock(HOST)
             .matchHeader("Content-Type", "application/text")
             .matchHeader("Accept", "application/text")
@@ -175,6 +175,23 @@ describe("f.get()", () => {
                 Accept: "application/text",
                 Foo: "bar",
             },
+        });
+    });
+
+    test("You can pass headers as a Headers instance", async () => {
+        nock(HOST)
+            .matchHeader("Content-Type", "application/text")
+            .matchHeader("Accept", "application/text")
+            .matchHeader("Foo", "bar")
+            .get("/api/user")
+            .reply(200);
+
+        await f.get(HOST + "/api/user", {
+            headers: new Headers({
+                "Content-Type": "application/text",
+                Accept: "application/text",
+                Foo: "bar",
+            }),
         });
     });
 });

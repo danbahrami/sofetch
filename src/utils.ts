@@ -1,20 +1,17 @@
 /**
- * Takes an array of RequestInit objects and combines them together. The
- * top-level attributes of the init object are combined and the headers of each
- * init are combined. In all cases inits that come later in the array take
- * override those that came before.
+ * Headers can be passed to a request in several formats. This utility combines
+ * multiple headers, in any valid format, and returns a single Headers instance.
  */
-export const combineInits = (inits: RequestInit[]) => {
-    return inits.reduce<RequestInit>((combined, next) => {
-        return {
-            ...combined,
-            ...next,
-            headers: {
-                ...combined.headers,
-                ...next.headers,
-            },
-        };
-    }, {});
+export const mergeHeaders = (inits: (HeadersInit | undefined)[]): Headers => {
+    const result: Record<string, string> = {};
+
+    for (const init of inits) {
+        new Headers(init).forEach((value, key) => {
+            result[key] = value;
+        });
+    }
+
+    return new Headers(result);
 };
 
 // a little helper type that helps us infer a return type from a function that

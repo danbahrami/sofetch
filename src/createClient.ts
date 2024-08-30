@@ -13,7 +13,7 @@ import {
     Modifiers,
     SoFetchRequestInit,
 } from "@/types";
-import { callbackStore, combineInits } from "@/utils";
+import { callbackStore, mergeHeaders } from "@/utils";
 
 export const createClient = (options: ClientOptions = {}): Client => {
     /**
@@ -58,13 +58,15 @@ export const createClient = (options: ClientOptions = {}): Client => {
                  * default if JSON is passed as the request body.
                  */
                 const { json, ...requestInit } = init;
-                const combinedRequestInit = combineInits([
-                    json
-                        ? { headers: { "content-type": "application/json" } }
-                        : {},
-                    methodInit,
-                    requestInit,
-                ]);
+                const combinedRequestInit: RequestInit = {
+                    ...methodInit,
+                    ...requestInit,
+                    headers: mergeHeaders([
+                        json ? { "content-type": "application/json" } : {},
+                        methodInit.headers,
+                        requestInit.headers,
+                    ]),
+                };
 
                 /**
                  * If JSON has been passed then stringify it. If the JSON cannot

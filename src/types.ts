@@ -1,17 +1,7 @@
-import {
-    HttpError,
-    JsonParseError,
-    JsonStringifyError,
-    NetworkError,
-} from "./errors";
+import { JsonParseError, JsonStringifyError } from "./errors";
 
-export type SoFetchRequestInit = Omit<RequestInit, "headers" | "method"> & {
-    headers?: Record<string, string>;
+export type SoFetchRequestInit = Omit<RequestInit, "method"> & {
     json?: unknown;
-};
-
-export type MethodDefault = Omit<RequestInit, "headers" | "method"> & {
-    headers?: Record<string, string>;
 };
 
 export type Callbacks = {
@@ -152,13 +142,13 @@ export type Client = {
 
 export type ClientOptions = {
     defaults?: {
-        get: MethodDefault;
-        put: MethodDefault;
-        post: MethodDefault;
-        patch: MethodDefault;
-        delete: MethodDefault;
-        options: MethodDefault;
-        head: MethodDefault;
+        get: Omit<RequestInit, "method">;
+        put: Omit<RequestInit, "method">;
+        post: Omit<RequestInit, "method">;
+        patch: Omit<RequestInit, "method">;
+        delete: Omit<RequestInit, "method">;
+        options: Omit<RequestInit, "method">;
+        head: Omit<RequestInit, "method">;
     };
     callbacks?: {
         onRequestStart?: Callbacks["onRequestStart"];
