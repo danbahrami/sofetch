@@ -84,7 +84,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
      * use to build the public methods: `.get()`, `.post()`, `.request()` etc.
      */
     const _createMethod = (getDefaultInit: () => RequestInit) => {
-        return (info: RequestInfo, init?: RequestInit & { json?: unknown }) => {
+        return (info: RequestInfo | URL, init?: RequestInit & { json?: unknown }) => {
             const result = (async (): Promise<DecoratedResponse> => {
                 /**
                  * Combine the incoming RequestInit with the default RequestInit

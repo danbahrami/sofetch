@@ -86,6 +86,7 @@ export type ClientOptions = {
         beforeSuccessResponse?: Modifiers["beforeSuccessResponse"];
         beforeErrorResponse?: Modifiers["beforeErrorResponse"];
     };
+    baseUrl?: string | URL;
 };
 
 export type Client = {
@@ -93,7 +94,7 @@ export type Client = {
      * Perform an HTTP request using any HTTP method (defaults to GET)
      */
     request: (
-        input: RequestInfo,
+        input: RequestInfo | URL,
         init?: RequestInit & { json?: unknown }
     ) => DecoratedResponsePromise;
 
@@ -101,7 +102,7 @@ export type Client = {
      * Perform a HTTP GET request
      */
     get: (
-        input: RequestInfo,
+        input: RequestInfo | URL,
         init?: Omit<RequestInit, "method"> & { json?: unknown }
     ) => DecoratedResponsePromise;
 
@@ -109,7 +110,7 @@ export type Client = {
      * Perform a HTTP PUT request
      */
     put: (
-        input: RequestInfo,
+        input: RequestInfo | URL,
         init?: Omit<RequestInit, "method"> & { json?: unknown }
     ) => DecoratedResponsePromise;
 
@@ -117,7 +118,7 @@ export type Client = {
      * Perform a HTTP POST request
      */
     post: (
-        input: RequestInfo,
+        input: RequestInfo | URL,
         init?: Omit<RequestInit, "method"> & { json?: unknown }
     ) => DecoratedResponsePromise;
 
@@ -125,7 +126,7 @@ export type Client = {
      * Perform a HTTP PATCH request
      */
     patch: (
-        input: RequestInfo,
+        input: RequestInfo | URL,
         init?: Omit<RequestInit, "method"> & { json?: unknown }
     ) => DecoratedResponsePromise;
 
@@ -133,7 +134,7 @@ export type Client = {
      * Perform a HTTP DELETE request
      */
     delete: (
-        input: RequestInfo,
+        input: RequestInfo | URL,
         init?: Omit<RequestInit, "method"> & { json?: unknown }
     ) => DecoratedResponsePromise;
 
@@ -141,7 +142,7 @@ export type Client = {
      * Perform a HTTP OPTIONS request
      */
     options: (
-        input: RequestInfo,
+        input: RequestInfo | URL,
         init?: Omit<RequestInit, "method"> & { json?: unknown }
     ) => DecoratedResponsePromise;
 
@@ -149,7 +150,7 @@ export type Client = {
      * Perform a HTTP HEAD request
      */
     head: (
-        input: RequestInfo,
+        input: RequestInfo | URL,
         init?: Omit<RequestInit, "method"> & { json?: unknown }
     ) => DecoratedResponsePromise;
 

@@ -206,6 +206,29 @@ describe("f.get()", () => {
             }),
         });
     });
+
+    test("You can pass a full Request instance", async () => {
+        nock(HOST)
+            .get("/api/user")
+            .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 });
+
+        const request = new Request(HOST + "/api/user");
+        const response = await f.get(request);
+        expect(response).toBeInstanceOf(Response);
+        expect(response.status).toBe(200);
+        expect(response.statusText).toBe("OK");
+    });
+
+    test("You can pass a URL instance", async () => {
+        nock(HOST)
+            .get("/api/user")
+            .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 });
+
+        const response = await f.get(new URL("/api/user", HOST));
+        expect(response).toBeInstanceOf(Response);
+        expect(response.status).toBe(200);
+        expect(response.statusText).toBe("OK");
+    });
 });
 
 describe("f.post()", () => {
