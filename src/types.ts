@@ -156,14 +156,14 @@ export type Client = {
 
 export type ClientOptions = {
     defaults?: {
-        request: RequestInit;
-        get: Omit<RequestInit, "method">;
-        put: Omit<RequestInit, "method">;
-        post: Omit<RequestInit, "method">;
-        patch: Omit<RequestInit, "method">;
-        delete: Omit<RequestInit, "method">;
-        options: Omit<RequestInit, "method">;
-        head: Omit<RequestInit, "method">;
+        request?: RequestInit;
+        get?: Omit<RequestInit, "method">;
+        put?: Omit<RequestInit, "method">;
+        post?: Omit<RequestInit, "method">;
+        patch?: Omit<RequestInit, "method">;
+        delete?: Omit<RequestInit, "method">;
+        options?: Omit<RequestInit, "method">;
+        head?: Omit<RequestInit, "method">;
     };
     callbacks?: {
         onRequestStart?: Callbacks["onRequestStart"];
