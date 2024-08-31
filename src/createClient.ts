@@ -11,7 +11,6 @@ import {
     DecoratedResponse,
     DecoratedResponsePromise,
     Modifiers,
-    SoFetchRequestInit,
 } from "@/types";
 import { callbackStore, mergeHeaders } from "@/utils";
 
@@ -53,14 +52,14 @@ export const createClient = (options: ClientOptions = {}): Client => {
     };
 
     const _createMethod = (methodInit: RequestInit) => {
-        return (info: RequestInfo, init: SoFetchRequestInit = {}) => {
+        return (info: RequestInfo, init?: RequestInit & { json?: unknown }) => {
             const result = (async (): Promise<DecoratedResponse> => {
                 /**
                  * Combine the incoming RequestInit with the default RequestInit
                  * and set "content-type" header to "application/json" by
                  * default if JSON is passed as the request body.
                  */
-                const { json, ...requestInit } = init;
+                const { json, ...requestInit } = init ?? {};
                 const combinedRequestInit: RequestInit = {
                     ...methodInit,
                     ...requestInit,
@@ -211,6 +210,10 @@ export const createClient = (options: ClientOptions = {}): Client => {
     };
 
     return {
+        request: _createMethod({
+            ...options.defaults?.request,
+        }),
+
         get: _createMethod({
             method: "GET",
             ...options.defaults?.get,

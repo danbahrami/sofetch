@@ -5,10 +5,6 @@ import {
     NetworkError,
 } from "./errors";
 
-export type SoFetchRequestInit = Omit<RequestInit, "method"> & {
-    json?: unknown;
-};
-
 export type Callbacks = {
     onRequestStart: (details: { request: Request }) => Promise<void> | void;
     onSuccessResponse: (details: {
@@ -80,11 +76,19 @@ export type DecoratedResponsePromise = Omit<
 
 export type Client = {
     /**
+     * Perform an HTTP request using any HTTP method (defaults to GET)
+     */
+    request: (
+        input: RequestInfo,
+        init?: RequestInit & { json?: unknown }
+    ) => DecoratedResponsePromise;
+
+    /**
      * Perform a HTTP GET request
      */
     get: (
         input: RequestInfo,
-        init?: SoFetchRequestInit
+        init?: Omit<RequestInit, "method"> & { json?: unknown }
     ) => DecoratedResponsePromise;
 
     /**
@@ -92,7 +96,7 @@ export type Client = {
      */
     put: (
         input: RequestInfo,
-        init?: SoFetchRequestInit
+        init?: Omit<RequestInit, "method"> & { json?: unknown }
     ) => DecoratedResponsePromise;
 
     /**
@@ -100,7 +104,7 @@ export type Client = {
      */
     post: (
         input: RequestInfo,
-        init?: SoFetchRequestInit
+        init?: Omit<RequestInit, "method"> & { json?: unknown }
     ) => DecoratedResponsePromise;
 
     /**
@@ -108,7 +112,7 @@ export type Client = {
      */
     patch: (
         input: RequestInfo,
-        init?: SoFetchRequestInit
+        init?: Omit<RequestInit, "method"> & { json?: unknown }
     ) => DecoratedResponsePromise;
 
     /**
@@ -116,7 +120,7 @@ export type Client = {
      */
     delete: (
         input: RequestInfo,
-        init?: SoFetchRequestInit
+        init?: Omit<RequestInit, "method"> & { json?: unknown }
     ) => DecoratedResponsePromise;
 
     /**
@@ -124,7 +128,7 @@ export type Client = {
      */
     options: (
         input: RequestInfo,
-        init?: SoFetchRequestInit
+        init?: Omit<RequestInit, "method"> & { json?: unknown }
     ) => DecoratedResponsePromise;
 
     /**
@@ -132,7 +136,7 @@ export type Client = {
      */
     head: (
         input: RequestInfo,
-        init?: SoFetchRequestInit
+        init?: Omit<RequestInit, "method"> & { json?: unknown }
     ) => DecoratedResponsePromise;
 
     callbacks: {
@@ -152,6 +156,7 @@ export type Client = {
 
 export type ClientOptions = {
     defaults?: {
+        request: RequestInit;
         get: Omit<RequestInit, "method">;
         put: Omit<RequestInit, "method">;
         post: Omit<RequestInit, "method">;

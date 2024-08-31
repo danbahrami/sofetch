@@ -22,6 +22,30 @@ const mockConsoleError = () => {
 
 const HOST = "http://that-is-so-fetch.com";
 
+describe("f.request()", () => {
+    test("When no method is specified it performs a GET request and returns a response", async () => {
+        nock(HOST)
+            .get("/api/user")
+            .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 });
+
+        const response = await f.request(HOST + "/api/user");
+        expect(response).toBeInstanceOf(Response);
+        expect(response.status).toBe(200);
+        expect(response.statusText).toBe("OK");
+    });
+
+    test("You can provide an HTTP method", async () => {
+        nock(HOST)
+            .put("/api/user")
+            .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 });
+
+        const response = await f.request(HOST + "/api/user", { method: "put" });
+        expect(response).toBeInstanceOf(Response);
+        expect(response.status).toBe(200);
+        expect(response.statusText).toBe("OK");
+    });
+});
+
 describe("f.get()", () => {
     test("It performs a GET request and returns a response", async () => {
         nock(HOST)
