@@ -1,6 +1,7 @@
 import { HttpError, JsonParseError, JsonStringifyError, NetworkError } from "@/errors";
 import {
     Callbacks,
+    CallbackStore,
     Client,
     ClientOptions,
     DecoratedResponse,
@@ -13,38 +14,76 @@ export const createClient = (options: ClientOptions = {}): Client => {
     /**
      * Setup our callback registry
      */
-    const callbacks = {
-        onRequestStart: callbackStore<Callbacks["onRequestStart"]>(
-            options.callbacks?.onRequestStart
-        ),
-        onSuccessResponse: callbackStore<Callbacks["onSuccessResponse"]>(
-            options.callbacks?.onSuccessResponse
-        ),
-        onErrorResponse: callbackStore<Callbacks["onErrorResponse"]>(
-            options.callbacks?.onErrorResponse
-        ),
-        onJsonParseError: callbackStore<Callbacks["onJsonParseError"]>(
-            options.callbacks?.onJsonParseError
-        ),
-        onJsonStringifyError: callbackStore<Callbacks["onJsonStringifyError"]>(
-            options.callbacks?.onJsonStringifyError
-        ),
+    let callbacks: {
+        onRequestStart: CallbackStore<Callbacks["onRequestStart"]>;
+        onSuccessResponse: CallbackStore<Callbacks["onSuccessResponse"]>;
+        onErrorResponse: CallbackStore<Callbacks["onErrorResponse"]>;
+        onJsonParseError: CallbackStore<Callbacks["onJsonParseError"]>;
+        onJsonStringifyError: CallbackStore<Callbacks["onJsonStringifyError"]>;
     };
 
     /**
      * Setup our modifiers registry
      */
-    const modifiers = {
-        beforeRequest: callbackStore<Modifiers["beforeRequest"]>(options.modifiers?.beforeRequest),
-        beforeSuccessResponse: callbackStore<Modifiers["beforeSuccessResponse"]>(
-            options.modifiers?.beforeSuccessResponse
-        ),
-        beforeErrorResponse: callbackStore<Modifiers["beforeErrorResponse"]>(
-            options.modifiers?.beforeErrorResponse
-        ),
+    let modifiers: {
+        beforeRequest: CallbackStore<Modifiers["beforeRequest"]>;
+        beforeSuccessResponse: CallbackStore<Modifiers["beforeSuccessResponse"]>;
+        beforeErrorResponse: CallbackStore<Modifiers["beforeErrorResponse"]>;
     };
 
-    const _createMethod = (methodInit: RequestInit) => {
+    /**
+     * Setup out default per-method request inits
+     */
+    let defaults: {
+        request: RequestInit;
+        get: RequestInit;
+        put: RequestInit;
+        post: RequestInit;
+        patch: RequestInit;
+        delete: RequestInit;
+        options: RequestInit;
+        head: RequestInit;
+    };
+
+    /**
+     * `_configure()` initialises all the per-method defaults, callbacks &
+     * modifiers. It's called once internally to build the client with the
+     * options provided to `createClient()` but is also exposed publically as
+     * `client.configure()` so you can overwrite the client options at a later
+     * point.
+     */
+    const _configure = (options: ClientOptions = {}) => {
+        callbacks = {
+            onRequestStart: callbackStore(options.callbacks?.onRequestStart),
+            onSuccessResponse: callbackStore(options.callbacks?.onSuccessResponse),
+            onErrorResponse: callbackStore(options.callbacks?.onErrorResponse),
+            onJsonParseError: callbackStore(options.callbacks?.onJsonParseError),
+            onJsonStringifyError: callbackStore(options.callbacks?.onJsonStringifyError),
+        };
+
+        modifiers = {
+            beforeRequest: callbackStore(options.modifiers?.beforeRequest),
+            beforeSuccessResponse: callbackStore(options.modifiers?.beforeSuccessResponse),
+            beforeErrorResponse: callbackStore(options.modifiers?.beforeErrorResponse),
+        };
+
+        defaults = {
+            request: { ...options.defaults?.request },
+            get: { method: "GET", ...options.defaults?.get },
+            put: { method: "PUT", ...options.defaults?.put },
+            post: { method: "POST", ...options.defaults?.post },
+            patch: { method: "PATCH", ...options.defaults?.patch },
+            delete: { method: "DELETE", ...options.defaults?.delete },
+            options: { method: "OPTIONS", ...options.defaults?.options },
+            head: { method: "HEAD", ...options.defaults?.head },
+        };
+    };
+
+    /**
+     * `_createMethod()` is where all the complex stuff happens. It's what we
+     * use to build the public methods: `.get()`, `.post()`, `.request()` etc.
+     */
+    const _createMethod = (getDefaultInit: () => RequestInit) => {
         return (info: RequestInfo, init?: RequestInit & { json?: unknown }) => {
             const result = (async (): Promise<DecoratedResponse> => {
                 /**
@@ -53,12 +92,13 @@ export const createClient = (options: ClientOptions = {}): Client => {
                  * default if JSON is passed as the request body.
                  */
                 const { json, ...requestInit } = init ?? {};
+                const defaultInit = getDefaultInit();
                 const combinedRequestInit: RequestInit = {
-                    ...methodInit,
+                    ...defaultInit,
                     ...requestInit,
                     headers: mergeHeaders([
                         json ? { "content-type": "application/json" } : {},
-                        methodInit.headers,
+                        defaultInit.headers,
                         requestInit.headers,
                     ]),
                 };
@@ -195,45 +235,23 @@ export const createClient = (options: ClientOptions = {}): Client => {
         };
     };
 
+    /**
+     * Setup the client with initial per-method defaults, callbacks & modifiers
+     */
+    _configure(options);
+
     return {
-        request: _createMethod({
-            ...options.defaults?.request,
-        }),
+        configure: _configure,
 
-        get: _createMethod({
-            method: "GET",
-            ...options.defaults?.get,
-        }),
+        request: _createMethod(() => defaults.request),
 
-        post: _createMethod({
-            method: "POST",
-            ...options.defaults?.post,
-        }),
-
-        put: _createMethod({
-            method: "PUT",
-            ...options.defaults?.put,
-        }),
-
-        patch: _createMethod({
-            method: "PATCH",
-            ...options.defaults?.patch,
-        }),
-
-        delete: _createMethod({
-            method: "DELETE",
-            ...options.defaults?.delete,
-        }),
-
-        options: _createMethod({
-            method: "OPTIONS",
-            ...options.defaults?.options,
-        }),
-
-        head: _createMethod({
-            method: "HEAD",
-            ...options.defaults?.options,
-        }),
+        get: _createMethod(() => defaults.get),
+        put: _createMethod(() => defaults.put),
+        post: _createMethod(() => defaults.post),
+        patch: _createMethod(() => defaults.patch),
+        delete: _createMethod(() => defaults.delete),
+        options: _createMethod(() => defaults.options),
+        head: _createMethod(() => defaults.head),
 
         callbacks: {
             onRequestStart: cb => callbacks.onRequestStart.register(cb),

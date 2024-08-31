@@ -63,6 +63,31 @@ export type DecoratedResponsePromise = Omit<Promise<DecoratedResponse>, "json"> 
     json: <T = unknown>() => Promise<T>;
 };
 
+export type ClientOptions = {
+    defaults?: {
+        request?: RequestInit;
+        get?: Omit<RequestInit, "method">;
+        put?: Omit<RequestInit, "method">;
+        post?: Omit<RequestInit, "method">;
+        patch?: Omit<RequestInit, "method">;
+        delete?: Omit<RequestInit, "method">;
+        options?: Omit<RequestInit, "method">;
+        head?: Omit<RequestInit, "method">;
+    };
+    callbacks?: {
+        onRequestStart?: Callbacks["onRequestStart"];
+        onSuccessResponse?: Callbacks["onSuccessResponse"];
+        onErrorResponse?: Callbacks["onErrorResponse"];
+        onJsonParseError?: Callbacks["onJsonParseError"];
+        onJsonStringifyError?: Callbacks["onJsonStringifyError"];
+    };
+    modifiers?: {
+        beforeRequest?: Modifiers["beforeRequest"];
+        beforeSuccessResponse?: Modifiers["beforeSuccessResponse"];
+        beforeErrorResponse?: Modifiers["beforeErrorResponse"];
+    };
+};
+
 export type Client = {
     /**
      * Perform an HTTP request using any HTTP method (defaults to GET)
@@ -141,29 +166,24 @@ export type Client = {
         beforeSuccessResponse: Subscription<Modifiers["beforeSuccessResponse"]>;
         beforeErrorResponse: Subscription<Modifiers["beforeErrorResponse"]>;
     };
+
+    configure: (options?: ClientOptions) => void;
 };
 
-export type ClientOptions = {
-    defaults?: {
-        request?: RequestInit;
-        get?: Omit<RequestInit, "method">;
-        put?: Omit<RequestInit, "method">;
-        post?: Omit<RequestInit, "method">;
-        patch?: Omit<RequestInit, "method">;
-        delete?: Omit<RequestInit, "method">;
-        options?: Omit<RequestInit, "method">;
-        head?: Omit<RequestInit, "method">;
-    };
-    callbacks?: {
-        onRequestStart?: Callbacks["onRequestStart"];
-        onSuccessResponse?: Callbacks["onSuccessResponse"];
-        onErrorResponse?: Callbacks["onErrorResponse"];
-        onJsonParseError?: Callbacks["onJsonParseError"];
-        onJsonStringifyError?: Callbacks["onJsonStringifyError"];
-    };
-    modifiers?: {
-        beforeRequest?: Modifiers["beforeRequest"];
-        beforeSuccessResponse?: Modifiers["beforeSuccessResponse"];
-        beforeErrorResponse?: Modifiers["beforeErrorResponse"];
-    };
+// a little helper type that helps us infer a return type from a function that
+// mar or may not be async.
+type MaybePromise<T> = Promise<T> | T;
+
+export type Reduce<TFn> = TFn extends (
+    ...arg: any // eslint-disable-line @typescript-eslint/no-explicit-any
+) => MaybePromise<void | infer U>
+    ? (reducer: (accumulator: U, callback: TFn) => MaybePromise<U | void>, initialValue: U) => U
+    : never;
+
+export type CallbackStore<
+    TFn extends (...arg: any) => any, // eslint-disable-line @typescript-eslint/no-explicit-any
+> = {
+    register: (cb: TFn) => () => void;
+    emit: (...args: Parameters<TFn>) => Promise<void>;
+    reduce: Reduce<TFn>;
 };
