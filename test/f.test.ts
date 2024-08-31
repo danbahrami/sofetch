@@ -1,13 +1,7 @@
 import nock from "nock";
 import { describe, test, expect, vi } from "vitest";
 
-import {
-    f,
-    HttpError,
-    JsonParseError,
-    JsonStringifyError,
-    NetworkError,
-} from "../src";
+import { f, HttpError, JsonParseError, JsonStringifyError, NetworkError } from "../src";
 import { Callbacks } from "@/types";
 
 type User = {
@@ -77,9 +71,7 @@ describe("f.get()", () => {
             .get("/api/user")
             .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 });
 
-        const user = await f
-            .get(HOST + "/api/user")
-            .then(response => response.json<User>());
+        const user = await f.get(HOST + "/api/user").then(response => response.json<User>());
 
         expect(user).toEqual({
             firstName: "Shane",
@@ -89,9 +81,7 @@ describe("f.get()", () => {
     });
 
     test("4xx responses throw an HttpError", async () => {
-        nock(HOST)
-            .get("/api/user")
-            .reply(404, "Oh no, that page don't exist baby");
+        nock(HOST).get("/api/user").reply(404, "Oh no, that page don't exist baby");
 
         try {
             await f.get(HOST + "/api/user");
@@ -107,9 +97,7 @@ describe("f.get()", () => {
             expect(error.request.method).toBe("GET");
 
             expect(error.statusCode).toBe(404);
-            expect(await error.response.text()).toBe(
-                "Oh no, that page don't exist baby"
-            );
+            expect(await error.response.text()).toBe("Oh no, that page don't exist baby");
             expect(error.message).toBe(
                 `Request failed with status code 404 Not Found: GET ${HOST}/api/user`
             );
@@ -310,9 +298,7 @@ describe("f.patch()", () => {
 
 describe("f.delete()", () => {
     test("It performs a DELETE request and returns a response", async () => {
-        nock(HOST)
-            .delete("/api/user", { id: "4" })
-            .reply(200, { success: true });
+        nock(HOST).delete("/api/user", { id: "4" }).reply(200, { success: true });
 
         const response = await f.delete(HOST + "/api/user", {
             json: { id: "4" },
@@ -568,9 +554,7 @@ describe("onSuccessResponse callback", () => {
         const unsubscribe1 = f.callbacks.onSuccessResponse(callback1);
         const unsubscribe2 = f.callbacks.onSuccessResponse(callback2);
 
-        nock(HOST)
-            .get("/api/user?workspace=3")
-            .replyWithError(new Error("something bad happened"));
+        nock(HOST).get("/api/user?workspace=3").replyWithError(new Error("something bad happened"));
 
         try {
             await f.get(HOST + "/api/user?workspace=3");
@@ -640,9 +624,7 @@ describe("onErrorResponse callback", () => {
         const unsubscribe1 = f.callbacks.onErrorResponse(callback1);
         const unsubscribe2 = f.callbacks.onErrorResponse(callback2);
 
-        nock(HOST)
-            .get("/api/user?workspace=3")
-            .replyWithError(new Error("something bad happened"));
+        nock(HOST).get("/api/user?workspace=3").replyWithError(new Error("something bad happened"));
 
         try {
             await f.get(HOST + "/api/user?workspace=3");
@@ -911,42 +893,33 @@ describe("beforeSuccessResponse modifier", () => {
         nock(HOST).get("/api/user").reply(200, { id: "567" });
 
         // Add a modifier which mutates the response and return undefined
-        const unsubscribe1 = f.modifiers.beforeSuccessResponse(
-            ({ response }) => {
-                response.headers.set("test-header-1", "11-11-11");
-            }
-        );
+        const unsubscribe1 = f.modifiers.beforeSuccessResponse(({ response }) => {
+            response.headers.set("test-header-1", "11-11-11");
+        });
 
         // Add a modifier which returns a new response
-        const unsubscribe2 = f.modifiers.beforeSuccessResponse(
-            ({ response }) => {
-                const updated = response.clone();
-                updated.headers.set("test-header-2", "22-22-22");
-                return updated;
-            }
-        );
+        const unsubscribe2 = f.modifiers.beforeSuccessResponse(({ response }) => {
+            const updated = response.clone();
+            updated.headers.set("test-header-2", "22-22-22");
+            return updated;
+        });
 
         // Add an async modifier which mutates the response and returns undefined
-        const unsubscribe3 = f.modifiers.beforeSuccessResponse(
-            async ({ response }) => {
-                await Promise.resolve();
-                response.headers.set("test-header-3", "33-33-33");
-            }
-        );
+        const unsubscribe3 = f.modifiers.beforeSuccessResponse(async ({ response }) => {
+            await Promise.resolve();
+            response.headers.set("test-header-3", "33-33-33");
+        });
 
         // Add an async modifier which returns a new request
-        const unsubscribe4 = f.modifiers.beforeSuccessResponse(
-            async ({ response }) => {
-                await Promise.resolve();
-                const updated = response.clone();
-                updated.headers.set("test-header-4", "44-44-44");
-                return updated;
-            }
-        );
+        const unsubscribe4 = f.modifiers.beforeSuccessResponse(async ({ response }) => {
+            await Promise.resolve();
+            const updated = response.clone();
+            updated.headers.set("test-header-4", "44-44-44");
+            return updated;
+        });
 
         const onSuccessResponseSpy = vi.fn<Callbacks["onSuccessResponse"]>();
-        const unsubscribe5 =
-            f.callbacks.onSuccessResponse(onSuccessResponseSpy);
+        const unsubscribe5 = f.callbacks.onSuccessResponse(onSuccessResponseSpy);
 
         const response = await f.get(HOST + "/api/user");
 

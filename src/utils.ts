@@ -20,10 +20,7 @@ type MaybePromise<T> = Promise<T> | T;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Reduce<TFn> = TFn extends (arg: any) => MaybePromise<void | infer U>
-    ? (
-          reducer: (accumulator: U, callback: TFn) => MaybePromise<U | void>,
-          initialValue: U
-      ) => U
+    ? (reducer: (accumulator: U, callback: TFn) => MaybePromise<U | void>, initialValue: U) => U
     : never;
 
 /**

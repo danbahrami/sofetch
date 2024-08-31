@@ -1,16 +1,8 @@
-import {
-    HttpError,
-    JsonParseError,
-    JsonStringifyError,
-    NetworkError,
-} from "./errors";
+import { HttpError, JsonParseError, JsonStringifyError, NetworkError } from "./errors";
 
 export type Callbacks = {
     onRequestStart: (details: { request: Request }) => Promise<void> | void;
-    onSuccessResponse: (details: {
-        request: Request;
-        response: Response;
-    }) => Promise<void> | void;
+    onSuccessResponse: (details: { request: Request; response: Response }) => Promise<void> | void;
     onErrorResponse: (details: {
         request: Request;
         error: HttpError | NetworkError | Error;
@@ -67,10 +59,7 @@ export type DecoratedResponse = Omit<Response, "json"> & {
  *f.get(url).json<User>();
  *```
  */
-export type DecoratedResponsePromise = Omit<
-    Promise<DecoratedResponse>,
-    "json"
-> & {
+export type DecoratedResponsePromise = Omit<Promise<DecoratedResponse>, "json"> & {
     json: <T = unknown>() => Promise<T>;
 };
 

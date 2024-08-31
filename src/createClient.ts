@@ -1,9 +1,4 @@
-import {
-    HttpError,
-    JsonParseError,
-    JsonStringifyError,
-    NetworkError,
-} from "@/errors";
+import { HttpError, JsonParseError, JsonStringifyError, NetworkError } from "@/errors";
 import {
     Callbacks,
     Client,
@@ -40,12 +35,10 @@ export const createClient = (options: ClientOptions = {}): Client => {
      * Setup our modifiers registry
      */
     const modifiers = {
-        beforeRequest: callbackStore<Modifiers["beforeRequest"]>(
-            options.modifiers?.beforeRequest
+        beforeRequest: callbackStore<Modifiers["beforeRequest"]>(options.modifiers?.beforeRequest),
+        beforeSuccessResponse: callbackStore<Modifiers["beforeSuccessResponse"]>(
+            options.modifiers?.beforeSuccessResponse
         ),
-        beforeSuccessResponse: callbackStore<
-            Modifiers["beforeSuccessResponse"]
-        >(options.modifiers?.beforeSuccessResponse),
         beforeErrorResponse: callbackStore<Modifiers["beforeErrorResponse"]>(
             options.modifiers?.beforeErrorResponse
         ),
@@ -121,11 +114,10 @@ export const createClient = (options: ClientOptions = {}): Client => {
                      * Form the final response by piping it through all
                      * beforeSuccessResponse modifiers
                      */
-                    const response =
-                        await modifiers.beforeSuccessResponse.reduce(
-                            (acc, cb) => cb({ request, response: acc }),
-                            baseResponse
-                        );
+                    const response = await modifiers.beforeSuccessResponse.reduce(
+                        (acc, cb) => cb({ request, response: acc }),
+                        baseResponse
+                    );
 
                     /**
                      * Convert non `2xx` responses into an HttpError
@@ -150,17 +142,12 @@ export const createClient = (options: ClientOptions = {}): Client => {
                      *    catch cases where the client is expecting JSON but the
                      *    server unexpectedly returns HTML.
                      */
-                    const decoratedResponse =
-                        response.clone() as DecoratedResponse;
+                    const decoratedResponse = response.clone() as DecoratedResponse;
                     decoratedResponse.json = async <T = unknown>() => {
                         try {
                             return (await response.json()) as T;
                         } catch (e) {
-                            const error = new JsonParseError(
-                                request,
-                                response,
-                                e
-                            );
+                            const error = new JsonParseError(request, response, e);
                             await callbacks.onJsonParseError.emit({
                                 request,
                                 error,
@@ -175,11 +162,10 @@ export const createClient = (options: ClientOptions = {}): Client => {
                      * Emit and rethrow HttpErrors
                      */
                     if (e instanceof HttpError || e instanceof NetworkError) {
-                        const error =
-                            await modifiers.beforeErrorResponse.reduce(
-                                (acc, cb) => cb({ request, error: acc }),
-                                e
-                            );
+                        const error = await modifiers.beforeErrorResponse.reduce(
+                            (acc, cb) => cb({ request, error: acc }),
+                            e
+                        );
 
                         await callbacks.onErrorResponse.emit({
                             request,
@@ -254,16 +240,13 @@ export const createClient = (options: ClientOptions = {}): Client => {
             onSuccessResponse: cb => callbacks.onSuccessResponse.register(cb),
             onErrorResponse: cb => callbacks.onErrorResponse.register(cb),
             onJsonParseError: cb => callbacks.onJsonParseError.register(cb),
-            onJsonStringifyError: cb =>
-                callbacks.onJsonStringifyError.register(cb),
+            onJsonStringifyError: cb => callbacks.onJsonStringifyError.register(cb),
         },
 
         modifiers: {
             beforeRequest: cb => modifiers.beforeRequest.register(cb),
-            beforeSuccessResponse: cb =>
-                modifiers.beforeSuccessResponse.register(cb),
-            beforeErrorResponse: cb =>
-                modifiers.beforeErrorResponse.register(cb),
+            beforeSuccessResponse: cb => modifiers.beforeSuccessResponse.register(cb),
+            beforeErrorResponse: cb => modifiers.beforeErrorResponse.register(cb),
         },
     };
 };

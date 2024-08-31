@@ -11,9 +11,7 @@ export class HttpError extends Error {
         const statusCode = response.status;
         const status = `${statusCode} ${response.statusText}`.trim();
 
-        super(
-            `Request failed with status code ${status}: ${request.method} ${request.url}`
-        );
+        super(`Request failed with status code ${status}: ${request.method} ${request.url}`);
 
         this.name = "HttpError";
         this.response = response.clone();
@@ -39,8 +37,7 @@ export class NetworkError extends Error {
     public originalError: unknown;
 
     constructor(request: Request, error: unknown) {
-        const message =
-            error instanceof Error ? error.message : "Unknown NetworkError";
+        const message = error instanceof Error ? error.message : "Unknown NetworkError";
 
         super(message);
 
@@ -60,8 +57,7 @@ export class JsonParseError extends Error {
     public originalError: unknown;
 
     constructor(request: Request, response: Response, error: unknown) {
-        const message =
-            error instanceof Error ? error.message : "Unknown JsonParseError";
+        const message = error instanceof Error ? error.message : "Unknown JsonParseError";
 
         super(message);
 
@@ -85,10 +81,7 @@ export class JsonStringifyError extends Error {
     public originalError: unknown;
 
     constructor(request: Request, data: unknown, error: unknown) {
-        const message =
-            error instanceof Error
-                ? error.message
-                : "Unknown JsonStringifyError";
+        const message = error instanceof Error ? error.message : "Unknown JsonStringifyError";
 
         super(message);
 
