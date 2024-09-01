@@ -52,20 +52,26 @@ describe("createClient", () => {
             .post("/api/user", { id: "6686" })
             .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 });
 
-        const onRequestStartSpy = vi.fn<Callbacks["onRequestStart"]>();
+        const onRequestStart1Spy = vi.fn<Callbacks["onRequestStart"]>();
+        const onRequestStart2Spy = vi.fn<Callbacks["onRequestStart"]>();
         const onSuccessResponseSpy = vi.fn<Callbacks["onSuccessResponse"]>();
 
         const f = createClient({
             callbacks: {
-                onRequestStart: onRequestStartSpy,
-                onSuccessResponse: onSuccessResponseSpy,
+                onRequestStart: [onRequestStart1Spy, onRequestStart2Spy],
+                onSuccessResponse: [onSuccessResponseSpy],
             },
         });
 
         await f.post(HOST + "/api/user", { json: { id: "6686" } }).json<User>();
 
-        expect(onRequestStartSpy).toHaveBeenCalledTimes(1);
-        expect(onRequestStartSpy).toHaveBeenCalledWith({
+        expect(onRequestStart1Spy).toHaveBeenCalledTimes(1);
+        expect(onRequestStart1Spy).toHaveBeenCalledWith({
+            request: expect.any(Request),
+        });
+
+        expect(onRequestStart2Spy).toHaveBeenCalledTimes(1);
+        expect(onRequestStart2Spy).toHaveBeenCalledWith({
             request: expect.any(Request),
         });
 
@@ -84,9 +90,11 @@ describe("createClient", () => {
 
         const f = createClient({
             modifiers: {
-                beforeRequest: ({ request }) => {
-                    request.headers.set("X-CSRF", "token-123");
-                },
+                beforeRequest: [
+                    ({ request }) => {
+                        request.headers.set("X-CSRF", "token-123");
+                    },
+                ],
             },
         });
 

@@ -23,9 +23,9 @@ export const mergeHeaders = (inits: (HeadersInit | undefined)[]): Headers => {
 export const callbackStore = <
     TFn extends (...arg: any) => any, // eslint-disable-line @typescript-eslint/no-explicit-any
 >(
-    initial?: TFn
+    initial?: TFn[]
 ): CallbackStore<TFn> => {
-    const store = new Set<TFn>(initial ? [initial] : undefined);
+    const store = new Set<TFn>(initial);
 
     return {
         register: cb => {

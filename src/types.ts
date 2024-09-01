@@ -75,16 +75,16 @@ export type ClientOptions = {
         head?: Omit<RequestInit, "method">;
     };
     callbacks?: {
-        onRequestStart?: Callbacks["onRequestStart"];
-        onSuccessResponse?: Callbacks["onSuccessResponse"];
-        onErrorResponse?: Callbacks["onErrorResponse"];
-        onJsonParseError?: Callbacks["onJsonParseError"];
-        onJsonStringifyError?: Callbacks["onJsonStringifyError"];
+        onRequestStart?: Callbacks["onRequestStart"][];
+        onSuccessResponse?: Callbacks["onSuccessResponse"][];
+        onErrorResponse?: Callbacks["onErrorResponse"][];
+        onJsonParseError?: Callbacks["onJsonParseError"][];
+        onJsonStringifyError?: Callbacks["onJsonStringifyError"][];
     };
     modifiers?: {
-        beforeRequest?: Modifiers["beforeRequest"];
-        beforeSuccessResponse?: Modifiers["beforeSuccessResponse"];
-        beforeErrorResponse?: Modifiers["beforeErrorResponse"];
+        beforeRequest?: Modifiers["beforeRequest"][];
+        beforeSuccessResponse?: Modifiers["beforeSuccessResponse"][];
+        beforeErrorResponse?: Modifiers["beforeErrorResponse"][];
     };
     baseUrl?: string | URL;
 };
