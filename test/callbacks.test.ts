@@ -1,0 +1,501 @@
+import nock from "nock";
+import { describe, test, expect, vi } from "vitest";
+
+import { f, HttpError, NetworkError } from "../src";
+
+const mockConsoleError = () => {
+    return vi.spyOn(console, "error").mockImplementation(() => null);
+};
+
+const HOST = "http://that-is-so-fetch.com";
+
+describe("onRequestStart()", () => {
+    test("all `onRequestStart` callbacks are called before every request", async () => {
+        const callback1 = vi.fn();
+        const callback2 = vi.fn();
+
+        const unsubscribe1 = f.callbacks.onRequestStart(callback1);
+        const unsubscribe2 = f.callbacks.onRequestStart(callback2);
+
+        nock(HOST).get("/api/user?workspace=3").reply(200);
+
+        const request = f.get(HOST + "/api/user?workspace=3");
+
+        await vi.waitFor(() => {
+            expect(callback1).toHaveBeenCalled();
+            expect(callback2).toHaveBeenCalled();
+        });
+
+        const args = callback1.mock.calls[0];
+        expect(args).toEqual([{ request: expect.any(Request) }]);
+
+        const argRequest = args[0].request as Request;
+
+        expect(argRequest.method).toBe("GET");
+        expect(argRequest.url).toBe(HOST + "/api/user?workspace=3");
+
+        // cleanup
+        await request;
+        unsubscribe1();
+        unsubscribe2();
+    });
+
+    test("it awaits any async `onRequestStart` callbacks", async () => {
+        const output: string[] = [];
+
+        const callback1 = vi.fn(async () => {
+            output.push("callback1 start");
+            await Promise.resolve();
+            output.push("callback1 end");
+        });
+
+        const callback2 = vi.fn(async () => {
+            output.push("callback2 start");
+            await Promise.resolve();
+            output.push("callback2 end");
+        });
+
+        const unsubscribe1 = f.callbacks.onRequestStart(callback1);
+        const unsubscribe2 = f.callbacks.onRequestStart(callback2);
+
+        nock(HOST).get("/api/user?workspace=3").reply(200);
+
+        await f.get(HOST + "/api/user?workspace=3");
+
+        expect(output).toEqual([
+            "callback1 start",
+            "callback1 end",
+            "callback2 start",
+            "callback2 end",
+        ]);
+
+        // cleanup
+        unsubscribe1();
+        unsubscribe2();
+    });
+
+    test("once a callback is removed it's not called again", async () => {
+        const callback1 = vi.fn();
+        const callback2 = vi.fn();
+
+        const unsubscribe1 = f.callbacks.onRequestStart(callback1);
+        const unsubscribe2 = f.callbacks.onRequestStart(callback2);
+
+        nock(HOST).get("/api/user?workspace=3").twice().reply(200);
+
+        await f.get(HOST + "/api/user?workspace=3");
+
+        expect(callback1).toHaveBeenCalledTimes(1);
+        expect(callback2).toHaveBeenCalledTimes(1);
+
+        unsubscribe1();
+
+        await f.get(HOST + "/api/user?workspace=3");
+
+        expect(callback1).toHaveBeenCalledTimes(1);
+        expect(callback2).toHaveBeenCalledTimes(2);
+
+        unsubscribe2();
+    });
+});
+
+describe("onSuccessResponse()", () => {
+    test("all `onSuccessResponse` callbacks are called after a 200 response", async () => {
+        const callback1 = vi.fn();
+        const callback2 = vi.fn();
+
+        const unsubscribe1 = f.callbacks.onSuccessResponse(callback1);
+        const unsubscribe2 = f.callbacks.onSuccessResponse(callback2);
+
+        nock(HOST).get("/api/user?workspace=3").reply(200);
+
+        await f.get(HOST + "/api/user?workspace=3");
+
+        expect(callback1).toHaveBeenCalled();
+        expect(callback2).toHaveBeenCalled();
+
+        const args = callback1.mock.calls[0];
+        expect(args).toEqual([
+            {
+                request: expect.any(Request),
+                response: expect.any(Response),
+            },
+        ]);
+
+        const argRequest = args[0].request as Request;
+
+        expect(argRequest.method).toBe("GET");
+        expect(argRequest.url).toBe(HOST + "/api/user?workspace=3");
+
+        // cleanup
+        unsubscribe1();
+        unsubscribe2();
+    });
+
+    test("it awaits any async `onSuccessResponse` callbacks", async () => {
+        const output: string[] = [];
+
+        const callback1 = vi.fn(async () => {
+            output.push("callback1 start");
+            await Promise.resolve();
+            output.push("callback1 end");
+        });
+
+        const callback2 = vi.fn(async () => {
+            output.push("callback2 start");
+            await Promise.resolve();
+            output.push("callback2 end");
+        });
+
+        const unsubscribe1 = f.callbacks.onSuccessResponse(callback1);
+        const unsubscribe2 = f.callbacks.onSuccessResponse(callback2);
+
+        nock(HOST).get("/api/user?workspace=3").reply(200);
+
+        await f.get(HOST + "/api/user?workspace=3");
+
+        expect(output).toEqual([
+            "callback1 start",
+            "callback1 end",
+            "callback2 start",
+            "callback2 end",
+        ]);
+
+        // cleanup
+        unsubscribe1();
+        unsubscribe2();
+    });
+
+    test("once a callback is removed it's not called again", async () => {
+        const callback1 = vi.fn();
+        const callback2 = vi.fn();
+
+        const unsubscribe1 = f.callbacks.onSuccessResponse(callback1);
+        const unsubscribe2 = f.callbacks.onSuccessResponse(callback2);
+
+        nock(HOST).get("/api/user?workspace=3").twice().reply(200);
+
+        await f.get(HOST + "/api/user?workspace=3");
+
+        expect(callback1).toHaveBeenCalledTimes(1);
+        expect(callback2).toHaveBeenCalledTimes(1);
+
+        unsubscribe1();
+
+        await f.get(HOST + "/api/user?workspace=3");
+
+        expect(callback1).toHaveBeenCalledTimes(1);
+        expect(callback2).toHaveBeenCalledTimes(2);
+
+        unsubscribe2();
+    });
+
+    test("`onSuccessResponse` is not called when a non-200 response occurs", async () => {
+        const statusCodes = [400, 401, 402, 403, 500, 501, 502, 503];
+
+        for (const statusCode of statusCodes) {
+            const callback1 = vi.fn();
+            const callback2 = vi.fn();
+
+            const unsubscribe1 = f.callbacks.onSuccessResponse(callback1);
+            const unsubscribe2 = f.callbacks.onSuccessResponse(callback2);
+
+            nock(HOST).get("/api/user?workspace=3").reply(statusCode);
+
+            try {
+                await f.get(HOST + "/api/user?workspace=3");
+            } catch (e) {
+                //
+            }
+
+            expect(callback1).not.toHaveBeenCalled();
+            expect(callback2).not.toHaveBeenCalled();
+
+            // cleanup
+            unsubscribe1();
+            unsubscribe2();
+        }
+    });
+
+    test("`onSuccessResponse` is not called when a network error occurs", async () => {
+        const logSpy = mockConsoleError();
+
+        const callback1 = vi.fn();
+        const callback2 = vi.fn();
+
+        const unsubscribe1 = f.callbacks.onSuccessResponse(callback1);
+        const unsubscribe2 = f.callbacks.onSuccessResponse(callback2);
+
+        nock(HOST).get("/api/user?workspace=3").replyWithError(new Error("something bad happened"));
+
+        try {
+            await f.get(HOST + "/api/user?workspace=3");
+        } catch (e) {
+            //
+        }
+
+        expect(callback1).not.toHaveBeenCalled();
+        expect(callback2).not.toHaveBeenCalled();
+
+        // cleanup
+        unsubscribe1();
+        unsubscribe2();
+        logSpy.mockRestore();
+    });
+});
+
+describe("onErrorResponse()", () => {
+    test("all `onErrorResponse` callbacks are called after a non-200 response", async () => {
+        const statusCodes = [400, 401, 402, 403, 500, 501, 502, 503];
+
+        for (const statusCode of statusCodes) {
+            const callback1 = vi.fn();
+            const callback2 = vi.fn();
+
+            const unsubscribe1 = f.callbacks.onErrorResponse(callback1);
+            const unsubscribe2 = f.callbacks.onErrorResponse(callback2);
+
+            nock(HOST).get("/api/user?workspace=3").reply(statusCode);
+
+            try {
+                await f.get(HOST + "/api/user?workspace=3");
+            } catch (e) {
+                //
+            }
+
+            expect(callback1).toHaveBeenCalled();
+            expect(callback2).toHaveBeenCalled();
+
+            const args = callback1.mock.calls[0];
+            expect(args).toEqual([
+                {
+                    request: expect.any(Request),
+                    error: expect.any(HttpError),
+                },
+            ]);
+
+            const argRequest = args[0].request as Request;
+            const argError = args[0].error as HttpError;
+
+            expect(argRequest.method).toBe("GET");
+            expect(argRequest.url).toBe(HOST + "/api/user?workspace=3");
+            expect(argError.statusCode).toBe(statusCode);
+
+            // cleanup
+            unsubscribe1();
+            unsubscribe2();
+        }
+    });
+
+    test("`onErrorResponse` is called when a network error occurs", async () => {
+        const logSpy = mockConsoleError();
+
+        const callback1 = vi.fn();
+        const callback2 = vi.fn();
+
+        const unsubscribe1 = f.callbacks.onErrorResponse(callback1);
+        const unsubscribe2 = f.callbacks.onErrorResponse(callback2);
+
+        nock(HOST).get("/api/user?workspace=3").replyWithError(new Error("something bad happened"));
+
+        try {
+            await f.get(HOST + "/api/user?workspace=3");
+        } catch (e) {
+            //
+        }
+
+        expect(callback1).toHaveBeenCalledTimes(1);
+        expect(callback2).toHaveBeenCalledTimes(1);
+
+        const args = callback1.mock.calls[0];
+        expect(args).toEqual([
+            {
+                request: expect.any(Request),
+                error: expect.any(NetworkError),
+            },
+        ]);
+
+        const argRequest = args[0].request as Request;
+
+        expect(argRequest.method).toBe("GET");
+        expect(argRequest.url).toBe(HOST + "/api/user?workspace=3");
+
+        // cleanup
+        unsubscribe1();
+        unsubscribe2();
+        logSpy.mockRestore();
+    });
+
+    test("it awaits any async `onErrorResponse` callbacks", async () => {
+        const output: string[] = [];
+
+        const callback1 = vi.fn(async () => {
+            output.push("callback1 start");
+            await Promise.resolve();
+            output.push("callback1 end");
+        });
+
+        const callback2 = vi.fn(async () => {
+            output.push("callback2 start");
+            await Promise.resolve();
+            output.push("callback2 end");
+        });
+
+        const unsubscribe1 = f.callbacks.onErrorResponse(callback1);
+        const unsubscribe2 = f.callbacks.onErrorResponse(callback2);
+
+        nock(HOST).get("/api/user?workspace=3").reply(400);
+
+        try {
+            await f.get(HOST + "/api/user?workspace=3");
+        } catch (e) {
+            //
+        }
+
+        expect(output).toEqual([
+            "callback1 start",
+            "callback1 end",
+            "callback2 start",
+            "callback2 end",
+        ]);
+
+        // cleanup
+        unsubscribe1();
+        unsubscribe2();
+    });
+
+    test("once a callback is removed it's not called again", async () => {
+        const callback1 = vi.fn();
+        const callback2 = vi.fn();
+
+        const unsubscribe1 = f.callbacks.onErrorResponse(callback1);
+        const unsubscribe2 = f.callbacks.onErrorResponse(callback2);
+
+        nock(HOST).get("/api/user?workspace=3").twice().reply(400);
+
+        try {
+            await f.get(HOST + "/api/user?workspace=3");
+        } catch (e) {
+            //
+        }
+
+        expect(callback1).toHaveBeenCalledTimes(1);
+        expect(callback2).toHaveBeenCalledTimes(1);
+
+        unsubscribe1();
+
+        try {
+            await f.get(HOST + "/api/user?workspace=3");
+        } catch (e) {
+            //
+        }
+
+        expect(callback1).toHaveBeenCalledTimes(1);
+        expect(callback2).toHaveBeenCalledTimes(2);
+
+        unsubscribe2();
+    });
+
+    test("`onErrorResponse` is not called when a 200 response occurs", async () => {
+        const callback1 = vi.fn();
+        const callback2 = vi.fn();
+
+        const unsubscribe1 = f.callbacks.onErrorResponse(callback1);
+        const unsubscribe2 = f.callbacks.onErrorResponse(callback2);
+
+        nock(HOST).get("/api/user?workspace=3").reply(200);
+
+        try {
+            await f.get(HOST + "/api/user?workspace=3");
+        } catch (e) {
+            //
+        }
+
+        expect(callback1).not.toHaveBeenCalled();
+        expect(callback2).not.toHaveBeenCalled();
+
+        // cleanup
+        unsubscribe1();
+        unsubscribe2();
+    });
+});
+
+describe("onJsonParseError()", () => {
+    test("all `onJsonParseError` callbacks are called when calling .json() on a non-JSON response", async () => {
+        const callback1 = vi.fn();
+        const callback2 = vi.fn();
+
+        const unsubscribe1 = f.callbacks.onJsonParseError(callback1);
+        const unsubscribe2 = f.callbacks.onJsonParseError(callback2);
+
+        nock(HOST).get("/api/user").reply(200, "Oh hello");
+
+        try {
+            await f.get(HOST + "/api/user").json();
+            expect(true).toBe(false); // Fail the test if no error is thrown
+        } catch (e) {
+            //
+        }
+
+        expect(callback1).toHaveBeenCalledTimes(1);
+        expect(callback2).toHaveBeenCalledTimes(1);
+
+        unsubscribe1();
+        unsubscribe2();
+    });
+});
+
+describe("onJsonStringifyError()", () => {
+    test("all `onJsonStringifyError` callbacks when non-serializeable JSON is passed", async () => {
+        const callback1 = vi.fn();
+        const callback2 = vi.fn();
+
+        const unsubscribe1 = f.callbacks.onJsonStringifyError(callback1);
+        const unsubscribe2 = f.callbacks.onJsonStringifyError(callback2);
+
+        try {
+            await f.post(HOST + "/api/user", {
+                json: {
+                    // JS doesn't know how to parse a BigInt into JSON
+                    userId: BigInt(9007199254740991),
+                },
+            });
+            expect(true).toBe(false); // Fail the test if no error is thrown
+        } catch (e) {
+            //
+        }
+
+        expect(callback1).toHaveBeenCalledTimes(1);
+        expect(callback2).toHaveBeenCalledTimes(1);
+
+        unsubscribe1();
+        unsubscribe2();
+    });
+
+    test("`onJsonStringifyError` is not called when valid JSON is passed", async () => {
+        const callback1 = vi.fn();
+        const callback2 = vi.fn();
+
+        const unsubscribe1 = f.callbacks.onJsonStringifyError(callback1);
+        const unsubscribe2 = f.callbacks.onJsonStringifyError(callback2);
+
+        nock(HOST).post("/api/user").reply(200, "Oh hello");
+
+        try {
+            await f.post(HOST + "/api/user", {
+                json: {
+                    userId: 12,
+                },
+            });
+            expect(true).toBe(false); // Fail the test if no error is thrown
+        } catch (e) {
+            //
+        }
+
+        expect(callback1).not.toHaveBeenCalled();
+        expect(callback2).not.toHaveBeenCalled();
+
+        unsubscribe1();
+        unsubscribe2();
+    });
+});
