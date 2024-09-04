@@ -86,7 +86,7 @@ export type ClientOptions = {
         beforeSuccessResponse?: Modifiers["beforeSuccessResponse"][];
         beforeErrorResponse?: Modifiers["beforeErrorResponse"][];
     };
-    baseUrl?: string | URL;
+    baseUrl?: string;
 };
 
 export type Client = {

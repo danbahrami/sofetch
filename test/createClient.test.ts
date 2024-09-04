@@ -102,4 +102,78 @@ describe("createClient", () => {
 
         expect(user).toEqual({ firstName: "Shane", lastName: "MacGowan", age: 65 });
     });
+
+    describe("baseUrl", () => {
+        test("When you specify a base URL it's used for all requests", async () => {
+            nock(HOST)
+                .post("/api/org", { id: "6686" })
+                .reply(200, { id: "6686", name: "The Pogues" })
+                .get("/api/user")
+                .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 });
+
+            const f = createClient({
+                baseUrl: HOST,
+            });
+
+            const response1 = await f.post("/api/org", { json: { id: "6686" } }).json<User>();
+            const response2 = await f.get("/api/user").json<User>();
+
+            expect(response1).toEqual({ id: "6686", name: "The Pogues" });
+            expect(response2).toEqual({ firstName: "Shane", lastName: "MacGowan", age: 65 });
+        });
+
+        test("It removes additional forward slashes", async () => {
+            nock(HOST)
+                .post("/api/org", { id: "6686" })
+                .reply(200, { id: "6686", name: "The Pogues" })
+                .get("/api/user")
+                .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 });
+
+            const f = createClient({
+                baseUrl: `${HOST}///`,
+            });
+
+            const response1 = await f.post("/api/org", { json: { id: "6686" } }).json<User>();
+            const response2 = await f.get("/api/user").json<User>();
+
+            expect(response1).toEqual({ id: "6686", name: "The Pogues" });
+            expect(response2).toEqual({ firstName: "Shane", lastName: "MacGowan", age: 65 });
+        });
+
+        test("If you provide a full URL as a string to the request it takes precedence of the base URL", async () => {
+            nock(HOST)
+                .get("/api/user")
+                .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 });
+
+            const f = createClient({
+                baseUrl: "http://some-other-url.com",
+            });
+
+            const response = await f.get(HOST + "/api/user").json<User>();
+
+            expect(response).toEqual({ firstName: "Shane", lastName: "MacGowan", age: 65 });
+        });
+
+        test("If you provide a full URL as a URL instance to the request it takes precedence of the base URL", async () => {
+            nock(HOST)
+                .get("/api/user")
+                .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 });
+
+            const f = createClient({
+                baseUrl: "http://some-other-url.com",
+            });
+
+            const response = await f.get(new URL(HOST + "/api/user")).json<User>();
+
+            expect(response).toEqual({ firstName: "Shane", lastName: "MacGowan", age: 65 });
+        });
+
+        test("if you pass an invalid base URL it throws TypeError", async () => {
+            const f = createClient({
+                baseUrl: "some kind of bad string",
+            });
+
+            await expect(() => f.get(new URL(HOST + "/api/user"))).rejects.toThrowError(TypeError);
+        });
+    });
 });

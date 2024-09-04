@@ -43,6 +43,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
         delete: RequestInit;
         options: RequestInit;
         head: RequestInit;
+        baseUrl: string | undefined;
     };
 
     /**
@@ -76,6 +77,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
             delete: { method: "DELETE", ...options.defaults?.delete },
             options: { method: "OPTIONS", ...options.defaults?.options },
             head: { method: "HEAD", ...options.defaults?.head },
+            baseUrl: options.baseUrl,
         };
     };
 
@@ -103,6 +105,20 @@ export const createClient = (options: ClientOptions = {}): Client => {
                     ]),
                 };
 
+                // Append the base URL
+                let requestInfo = info;
+
+                if (!(info instanceof Request)) {
+                    try {
+                        requestInfo = new URL(info, defaults.baseUrl);
+                    } catch (e) {
+                        throw new TypeError(`Could not build valid URL from parts:
+                            baseUrl: "${defaults.baseUrl}"
+                            path: "${info}"
+                        `);
+                    }
+                }
+
                 /**
                  * If JSON has been passed then stringify it. If the JSON cannot
                  * be serialized then throw JsonStringifyError and emit to the
@@ -113,7 +129,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
                         combinedRequestInit.body = JSON.stringify(json);
                     } catch (e) {
                         const error = new JsonStringifyError(
-                            new Request(info, combinedRequestInit), // we don't have a Request instance yet but build one to attach to this error
+                            new Request(requestInfo, combinedRequestInit), // we don't have a Request instance yet but build one to attach to this error
                             json,
                             e
                         );
@@ -131,7 +147,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
                  */
                 const request = await modifiers.beforeRequest.reduce(
                     (acc, cb) => cb({ request: acc }),
-                    new Request(info, combinedRequestInit)
+                    new Request(requestInfo, combinedRequestInit)
                 );
 
                 try {
