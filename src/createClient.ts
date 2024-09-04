@@ -80,6 +80,47 @@ export const createClient = (options: ClientOptions = {}): Client => {
     };
 
     /**
+     * Decorate the promise returned from a request method with some response body shortcut methods .
+     * - await f.get().json()
+     * - await f.get().text()
+     * - await f.get().blob()
+     * - await f.get().formData()
+     * - await f.get().arrayBuffer()
+     */
+    const _decorateResponsePromise = (
+        promise: Promise<DecoratedResponse>
+    ): DecoratedResponsePromise => {
+        const decoratedPromise = promise as DecoratedResponsePromise;
+
+        decoratedPromise.json = async <T = unknown>() => {
+            const response = await promise;
+            return response.json<T>();
+        };
+
+        decoratedPromise.text = async () => {
+            const response = await promise;
+            return response.text();
+        };
+
+        decoratedPromise.blob = async () => {
+            const response = await promise;
+            return response.blob();
+        };
+
+        decoratedPromise.formData = async () => {
+            const response = await promise;
+            return response.formData();
+        };
+
+        decoratedPromise.arrayBuffer = async () => {
+            const response = await promise;
+            return response.arrayBuffer();
+        };
+
+        return decoratedPromise;
+    };
+
+    /**
      * `_createMethod()` is where all the complex stuff happens. It's what we
      * use to build the public methods: `.get()`, `.post()`, `.request()` etc.
      */
@@ -226,21 +267,9 @@ export const createClient = (options: ClientOptions = {}): Client => {
 
                     throw e;
                 }
-            })() as DecoratedResponsePromise;
+            })();
 
-            /**
-             * Decorate the response with a .json() method so you can call it
-             * directly on the response promise.
-             *
-             * @example
-             * const user = get("/api/user").json<User>();
-             */
-            result.json = async <T = unknown>() => {
-                const response = await result;
-                return await response.json<T>();
-            };
-
-            return result;
+            return _decorateResponsePromise(result);
         };
     };
 

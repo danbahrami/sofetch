@@ -42,18 +42,28 @@ export type DecoratedResponse = Omit<Response, "json"> & {
 };
 
 /**
- * This type enhances the promise that's returned from client methods so that
- * you can call `.json()` on it immediately without having to do it inside
- * `.then()`
+ * When you make a request, the promise that's returned has some additional
+ * methods bound to it which act as shortcuts for deserializing the reponse
+ * body.
  *
- * @example
+ * So instead of manually accessing response JSON like so:
  *
- *```ts
- *f.get(url).json<User>();
- *```
+ * ```
+ * const user = await f.get(url).then(r => r.json<User>());
+ * ```
+ *
+ * You can do it straight on the response promise like so:
+ *
+ * ```
+ * const user = await f.get(url).json<User>();
+ * ```
  */
 export type DecoratedResponsePromise = Omit<Promise<DecoratedResponse>, "json"> & {
     json: <T = unknown>() => Promise<T>;
+    text: () => Promise<string>;
+    blob: () => Promise<Blob>;
+    formData: () => Promise<FormData>;
+    arrayBuffer: () => Promise<ArrayBuffer>;
 };
 
 export type ClientOptions = {
