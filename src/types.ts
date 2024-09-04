@@ -1,4 +1,4 @@
-import { HttpError, JsonParseError, JsonStringifyError, NetworkError } from "./errors";
+import { HttpError, NetworkError } from "./errors";
 
 export type Callbacks = {
     onRequestStart: (details: { request: Request }) => Promise<void> | void;
@@ -7,14 +7,7 @@ export type Callbacks = {
         request: Request;
         error: HttpError | NetworkError | Error;
     }) => Promise<void> | void;
-    onJsonParseError: (details: {
-        request: Request;
-        error: JsonParseError;
-    }) => Promise<void> | void;
-    onJsonStringifyError: (details: {
-        request: Request;
-        error: JsonStringifyError;
-    }) => Promise<void> | void;
+    onClientError: (details: { error: unknown }) => Promise<void> | void;
 };
 
 export type Modifiers = {
@@ -78,8 +71,7 @@ export type ClientOptions = {
         onRequestStart?: Callbacks["onRequestStart"][];
         onSuccessResponse?: Callbacks["onSuccessResponse"][];
         onErrorResponse?: Callbacks["onErrorResponse"][];
-        onJsonParseError?: Callbacks["onJsonParseError"][];
-        onJsonStringifyError?: Callbacks["onJsonStringifyError"][];
+        onClientError?: Callbacks["onClientError"][];
     };
     modifiers?: {
         beforeRequest?: Modifiers["beforeRequest"][];
@@ -158,8 +150,7 @@ export type Client = {
         onRequestStart: Subscription<Callbacks["onRequestStart"]>;
         onSuccessResponse: Subscription<Callbacks["onSuccessResponse"]>;
         onErrorResponse: Subscription<Callbacks["onErrorResponse"]>;
-        onJsonParseError: Subscription<Callbacks["onJsonParseError"]>;
-        onJsonStringifyError: Subscription<Callbacks["onJsonStringifyError"]>;
+        onClientError: Subscription<Callbacks["onClientError"]>;
     };
 
     modifiers: {
@@ -187,4 +178,5 @@ export type CallbackStore<
     register: (cb: TFn) => () => void;
     emit: (...args: Parameters<TFn>) => Promise<void>;
     reduce: Reduce<TFn>;
+    length: () => number;
 };

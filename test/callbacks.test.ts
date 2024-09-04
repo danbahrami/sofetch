@@ -1,7 +1,8 @@
 import nock from "nock";
 import { describe, test, expect, vi } from "vitest";
 
-import { f, HttpError, NetworkError } from "../src";
+import { f, HttpError, JsonParseError, JsonStringifyError, NetworkError } from "../src";
+import { Callbacks } from "@/types";
 
 const mockConsoleError = () => {
     return vi.spyOn(console, "error").mockImplementation(() => null);
@@ -393,6 +394,7 @@ describe("onErrorResponse()", () => {
         expect(callback1).toHaveBeenCalledTimes(1);
         expect(callback2).toHaveBeenCalledTimes(2);
 
+        unsubscribe1();
         unsubscribe2();
     });
 
@@ -420,13 +422,13 @@ describe("onErrorResponse()", () => {
     });
 });
 
-describe("onJsonParseError()", () => {
-    test("all `onJsonParseError` callbacks are called when calling .json() on a non-JSON response", async () => {
-        const callback1 = vi.fn();
-        const callback2 = vi.fn();
+describe("onClientError()", () => {
+    test("all callbacks receive a JsonParseError when calling .json() on a non-JSON response", async () => {
+        const callback1 = vi.fn<Callbacks["onClientError"]>();
+        const callback2 = vi.fn<Callbacks["onClientError"]>();
 
-        const unsubscribe1 = f.callbacks.onJsonParseError(callback1);
-        const unsubscribe2 = f.callbacks.onJsonParseError(callback2);
+        const unsubscribe1 = f.callbacks.onClientError(callback1);
+        const unsubscribe2 = f.callbacks.onClientError(callback2);
 
         nock(HOST).get("/api/user").reply(200, "Oh hello");
 
@@ -440,18 +442,23 @@ describe("onJsonParseError()", () => {
         expect(callback1).toHaveBeenCalledTimes(1);
         expect(callback2).toHaveBeenCalledTimes(1);
 
+        expect(callback1).toHaveBeenCalledWith({
+            error: expect.any(JsonParseError),
+        });
+        expect(callback2).toHaveBeenCalledWith({
+            error: expect.any(JsonParseError),
+        });
+
         unsubscribe1();
         unsubscribe2();
     });
-});
 
-describe("onJsonStringifyError()", () => {
-    test("all `onJsonStringifyError` callbacks when non-serializeable JSON is passed", async () => {
-        const callback1 = vi.fn();
-        const callback2 = vi.fn();
+    test("all callbacks receive a JsonStringifyError when non-serializeable JSON is passed", async () => {
+        const callback1 = vi.fn<Callbacks["onClientError"]>();
+        const callback2 = vi.fn<Callbacks["onClientError"]>();
 
-        const unsubscribe1 = f.callbacks.onJsonStringifyError(callback1);
-        const unsubscribe2 = f.callbacks.onJsonStringifyError(callback2);
+        const unsubscribe1 = f.callbacks.onClientError(callback1);
+        const unsubscribe2 = f.callbacks.onClientError(callback2);
 
         try {
             await f.post(HOST + "/api/user", {
@@ -468,34 +475,134 @@ describe("onJsonStringifyError()", () => {
         expect(callback1).toHaveBeenCalledTimes(1);
         expect(callback2).toHaveBeenCalledTimes(1);
 
+        expect(callback1).toHaveBeenCalledWith({
+            error: expect.any(JsonStringifyError),
+        });
+        expect(callback2).toHaveBeenCalledWith({
+            error: expect.any(JsonStringifyError),
+        });
+
         unsubscribe1();
         unsubscribe2();
     });
 
-    test("`onJsonStringifyError` is not called when valid JSON is passed", async () => {
-        const callback1 = vi.fn();
-        const callback2 = vi.fn();
+    test("all callbacks receive an Error when an `onRequestStart` modifier throws an error", async () => {
+        const error = new Error("uh oh");
 
-        const unsubscribe1 = f.callbacks.onJsonStringifyError(callback1);
-        const unsubscribe2 = f.callbacks.onJsonStringifyError(callback2);
+        const unsubscribe1 = f.modifiers.beforeRequest(() => {
+            throw error;
+        });
 
-        nock(HOST).post("/api/user").reply(200, "Oh hello");
+        const callback1 = vi.fn<Callbacks["onClientError"]>();
+        const callback2 = vi.fn<Callbacks["onClientError"]>();
+        const unsubscribe2 = f.callbacks.onClientError(callback1);
+        const unsubscribe3 = f.callbacks.onClientError(callback2);
 
         try {
-            await f.post(HOST + "/api/user", {
-                json: {
-                    userId: 12,
-                },
-            });
+            await f.get(HOST + "/api/user");
             expect(true).toBe(false); // Fail the test if no error is thrown
         } catch (e) {
             //
         }
 
-        expect(callback1).not.toHaveBeenCalled();
-        expect(callback2).not.toHaveBeenCalled();
+        expect(callback1).toHaveBeenCalledTimes(1);
+        expect(callback2).toHaveBeenCalledTimes(1);
 
+        expect(callback1).toHaveBeenCalledWith({ error });
+        expect(callback2).toHaveBeenCalledWith({ error });
+
+        // cleanup
         unsubscribe1();
         unsubscribe2();
+        unsubscribe3();
+    });
+
+    test("all callbacks receive an Error when a `beforeSuccessResponse` modifier throws an error", async () => {
+        const error = new Error("uh oh");
+
+        const unsubscribe1 = f.modifiers.beforeSuccessResponse(() => {
+            throw error;
+        });
+
+        const callback1 = vi.fn<Callbacks["onClientError"]>();
+        const callback2 = vi.fn<Callbacks["onClientError"]>();
+        const unsubscribe2 = f.callbacks.onClientError(callback1);
+        const unsubscribe3 = f.callbacks.onClientError(callback2);
+
+        nock(HOST).get("/api/user").reply(200);
+
+        try {
+            await f.get(HOST + "/api/user");
+            expect(true).toBe(false); // Fail the test if no error is thrown
+        } catch (e) {
+            //
+        }
+
+        expect(callback1).toHaveBeenCalledTimes(1);
+        expect(callback2).toHaveBeenCalledTimes(1);
+
+        expect(callback1).toHaveBeenCalledWith({ error });
+        expect(callback2).toHaveBeenCalledWith({ error });
+
+        // cleanup
+        unsubscribe1();
+        unsubscribe2();
+        unsubscribe3();
+    });
+
+    test("`onClientError` is not called when a `beforeSuccessResponse` modifier throws a HttpError", async () => {
+        const unsubscribe1 = f.modifiers.beforeSuccessResponse(({ request, response }) => {
+            throw new HttpError(request, response);
+        });
+
+        const callback1 = vi.fn<Callbacks["onClientError"]>();
+        const callback2 = vi.fn<Callbacks["onClientError"]>();
+        const unsubscribe2 = f.callbacks.onClientError(callback1);
+        const unsubscribe3 = f.callbacks.onClientError(callback2);
+
+        nock(HOST).get("/api/user").reply(200);
+
+        try {
+            await f.get(HOST + "/api/user");
+            expect(true).toBe(false); // Fail the test if no error is thrown
+        } catch (e) {
+            //
+        }
+
+        expect(callback1).toHaveBeenCalledTimes(0);
+        expect(callback2).toHaveBeenCalledTimes(0);
+
+        // cleanup
+        unsubscribe1();
+        unsubscribe2();
+        unsubscribe3();
+    });
+
+    test("`onClientError` is not called when a `beforeSuccessResponse` modifier throws a NetworkError", async () => {
+        const unsubscribe1 = f.modifiers.beforeSuccessResponse(({ request, response }) => {
+            throw new NetworkError(request, response);
+        });
+
+        const callback1 = vi.fn<Callbacks["onClientError"]>();
+        const callback2 = vi.fn<Callbacks["onClientError"]>();
+        const unsubscribe2 = f.callbacks.onClientError(callback1);
+        const unsubscribe3 = f.callbacks.onClientError(callback2);
+
+        nock(HOST).get("/api/user").reply(200);
+
+        try {
+            await f.get(HOST + "/api/user");
+            expect(true).toBe(false); // Fail the test if no error is thrown
+        } catch (e) {
+            //
+        }
+
+        expect(callback1).toHaveBeenCalledTimes(0);
+        expect(callback2).toHaveBeenCalledTimes(0);
+
+        // cleanup
+        unsubscribe1();
+        unsubscribe2();
+        unsubscribe3();
     });
 });

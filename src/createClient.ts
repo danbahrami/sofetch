@@ -18,8 +18,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
         onRequestStart: CallbackStore<Callbacks["onRequestStart"]>;
         onSuccessResponse: CallbackStore<Callbacks["onSuccessResponse"]>;
         onErrorResponse: CallbackStore<Callbacks["onErrorResponse"]>;
-        onJsonParseError: CallbackStore<Callbacks["onJsonParseError"]>;
-        onJsonStringifyError: CallbackStore<Callbacks["onJsonStringifyError"]>;
+        onClientError: CallbackStore<Callbacks["onClientError"]>;
     };
 
     /**
@@ -58,8 +57,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
             onRequestStart: callbackStore(options.callbacks?.onRequestStart),
             onSuccessResponse: callbackStore(options.callbacks?.onSuccessResponse),
             onErrorResponse: callbackStore(options.callbacks?.onErrorResponse),
-            onJsonParseError: callbackStore(options.callbacks?.onJsonParseError),
-            onJsonStringifyError: callbackStore(options.callbacks?.onJsonStringifyError),
+            onClientError: callbackStore(options.callbacks?.onClientError),
         };
 
         modifiers = {
@@ -88,69 +86,64 @@ export const createClient = (options: ClientOptions = {}): Client => {
     const _createMethod = (getDefaultInit: () => RequestInit) => {
         return (info: RequestInfo | URL, init?: RequestInit & { json?: unknown }) => {
             const result = (async (): Promise<DecoratedResponse> => {
-                /**
-                 * Combine the incoming RequestInit with the default RequestInit
-                 * and set "content-type" header to "application/json" by
-                 * default if JSON is passed as the request body.
-                 */
-                const { json, ...requestInit } = init ?? {};
-                const defaultInit = getDefaultInit();
-                const combinedRequestInit: RequestInit = {
-                    ...defaultInit,
-                    ...requestInit,
-                    headers: mergeHeaders([
-                        json ? { "content-type": "application/json" } : {},
-                        defaultInit.headers,
-                        requestInit.headers,
-                    ]),
-                };
-
-                // Append the base URL
-                let requestInfo = info;
-
-                if (!(info instanceof Request)) {
-                    try {
-                        requestInfo = new URL(info, defaults.baseUrl);
-                    } catch (e) {
-                        throw new TypeError(`Could not build valid URL from parts:
-                            baseUrl: "${defaults.baseUrl}"
-                            path: "${info}"
-                        `);
-                    }
-                }
-
-                /**
-                 * If JSON has been passed then stringify it. If the JSON cannot
-                 * be serialized then throw JsonStringifyError and emit to the
-                 * onJsonStringifyError callback
-                 */
-                if (json) {
-                    try {
-                        combinedRequestInit.body = JSON.stringify(json);
-                    } catch (e) {
-                        const error = new JsonStringifyError(
-                            new Request(requestInfo, combinedRequestInit), // we don't have a Request instance yet but build one to attach to this error
-                            json,
-                            e
-                        );
-                        await callbacks.onJsonStringifyError.emit({
-                            error,
-                            request: error.request,
-                        });
-                        throw error;
-                    }
-                }
-
-                /**
-                 * Build the request by first combining all the request options
-                 * and then passing it through any `beforeRequest` modifiers
-                 */
-                const request = await modifiers.beforeRequest.reduce(
-                    (acc, cb) => cb({ request: acc }),
-                    new Request(requestInfo, combinedRequestInit)
-                );
-
                 try {
+                    /**
+                     * Combine the incoming RequestInit with the default RequestInit
+                     * and set "content-type" header to "application/json" by
+                     * default if JSON is passed as the request body.
+                     */
+                    const { json, ...requestInit } = init ?? {};
+                    const defaultInit = getDefaultInit();
+                    const combinedRequestInit: RequestInit = {
+                        ...defaultInit,
+                        ...requestInit,
+                        headers: mergeHeaders([
+                            json ? { "content-type": "application/json" } : {},
+                            defaultInit.headers,
+                            requestInit.headers,
+                        ]),
+                    };
+
+                    // Append the base URL
+                    let requestInfo = info;
+
+                    if (!(info instanceof Request)) {
+                        try {
+                            requestInfo = new URL(info, defaults.baseUrl);
+                        } catch (e) {
+                            throw new TypeError(`Could not build valid URL from parts:
+                                baseUrl: "${defaults.baseUrl}"
+                                path: "${info}"
+                            `);
+                        }
+                    }
+
+                    /**
+                     * If JSON has been passed then stringify it. If the JSON cannot
+                     * be serialized then throw JsonStringifyError and emit to the
+                     * onJsonStringifyError callback
+                     */
+                    if (json) {
+                        try {
+                            combinedRequestInit.body = JSON.stringify(json);
+                        } catch (e) {
+                            throw new JsonStringifyError(
+                                new Request(requestInfo, combinedRequestInit), // we don't have a Request instance yet but build one to attach to this error
+                                json,
+                                e
+                            );
+                        }
+                    }
+
+                    /**
+                     * Build the request by first combining all the request options
+                     * and then passing it through any `beforeRequest` modifiers
+                     */
+                    const request = await modifiers.beforeRequest.reduce(
+                        (acc, cb) => cb({ request: acc }),
+                        new Request(requestInfo, combinedRequestInit)
+                    );
+
                     /**
                      * Emit to the onRequestStart callback
                      */
@@ -204,8 +197,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
                             return (await response.json()) as T;
                         } catch (e) {
                             const error = new JsonParseError(request, response, e);
-                            await callbacks.onJsonParseError.emit({
-                                request,
+                            await callbacks.onClientError.emit({
                                 error,
                             });
                             throw error;
@@ -214,22 +206,23 @@ export const createClient = (options: ClientOptions = {}): Client => {
 
                     return decoratedResponse;
                 } catch (e) {
-                    /**
-                     * Emit and rethrow HttpErrors
-                     */
                     if (e instanceof HttpError || e instanceof NetworkError) {
                         const error = await modifiers.beforeErrorResponse.reduce(
-                            (acc, cb) => cb({ request, error: acc }),
+                            (acc, cb) => cb({ request: e.request, error: acc }),
                             e
                         );
 
                         await callbacks.onErrorResponse.emit({
-                            request,
+                            request: e.request,
                             error,
                         });
 
                         throw error;
                     }
+
+                    await callbacks.onClientError.emit({
+                        error: e,
+                    });
 
                     throw e;
                 }
@@ -273,8 +266,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
             onRequestStart: cb => callbacks.onRequestStart.register(cb),
             onSuccessResponse: cb => callbacks.onSuccessResponse.register(cb),
             onErrorResponse: cb => callbacks.onErrorResponse.register(cb),
-            onJsonParseError: cb => callbacks.onJsonParseError.register(cb),
-            onJsonStringifyError: cb => callbacks.onJsonStringifyError.register(cb),
+            onClientError: cb => callbacks.onClientError.register(cb),
         },
 
         modifiers: {
