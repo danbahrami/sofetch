@@ -188,5 +188,4 @@ export type CallbackStore<
     register: (cb: TFn) => () => void;
     emit: (...args: Parameters<TFn>) => Promise<void>;
     reduce: Reduce<TFn>;
-    length: () => number;
 };
