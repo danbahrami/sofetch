@@ -173,6 +173,14 @@ export type Client = {
     configure: (options?: ClientOptions) => void;
 };
 
+/**
+ * This utility type helps us pass around a value that is either
+ * - a RequestInit object
+ * - a function that returns a RequestInit object
+ * - undefined
+ */
+export type RequestInitArg = RequestInit | (() => RequestInit) | (() => undefined) | undefined;
+
 // a little helper type that helps us infer a return type from a function that
 // mar or may not be async.
 type MaybePromise<T> = Promise<T> | T;
@@ -190,11 +198,3 @@ export type CallbackStore<
     emit: (...args: Parameters<TFn>) => Promise<void>;
     reduce: Reduce<TFn>;
 };
-
-/**
- * This utility type helps us pass around a value that is either
- * - a RequestInit object
- * - a function that returns a RequestInit object
- * - undefined
- */
-export type RequestInitArg = RequestInit | (() => RequestInit) | (() => undefined) | undefined;

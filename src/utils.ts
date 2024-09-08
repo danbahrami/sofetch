@@ -1,4 +1,10 @@
-import { CallbackStore, RequestInitArg, Reduce } from "@/types";
+import {
+    CallbackStore,
+    RequestInitArg,
+    Reduce,
+    DecoratedResponsePromise,
+    DecoratedResponse,
+} from "@/types";
 
 /**
  * Headers can be passed to a request in several formats. This utility combines
@@ -71,4 +77,46 @@ export const callbackStore = <
             return result;
         }) as Reduce<TFn>,
     };
+};
+
+/**
+ * Decorate the promise returned from a request method with some response body
+ * shortcut methods.
+ * - await f.get().json()
+ * - await f.get().text()
+ * - await f.get().blob()
+ * - await f.get().formData()
+ * - await f.get().arrayBuffer()
+ */
+export const decorateResponsePromise = (
+    promise: Promise<DecoratedResponse>
+): DecoratedResponsePromise => {
+    const decoratedPromise = promise as DecoratedResponsePromise;
+
+    decoratedPromise.json = async <T = unknown>() => {
+        const response = await promise;
+        return response.json<T>();
+    };
+
+    decoratedPromise.text = async () => {
+        const response = await promise;
+        return response.text();
+    };
+
+    decoratedPromise.blob = async () => {
+        const response = await promise;
+        return response.blob();
+    };
+
+    decoratedPromise.formData = async () => {
+        const response = await promise;
+        return response.formData();
+    };
+
+    decoratedPromise.arrayBuffer = async () => {
+        const response = await promise;
+        return response.arrayBuffer();
+    };
+
+    return decoratedPromise;
 };

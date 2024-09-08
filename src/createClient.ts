@@ -1,129 +1,43 @@
 import { HttpError, JsonParseError, JsonStringifyError, NetworkError } from "@/errors";
-import {
-    Callbacks,
-    CallbackStore,
-    Client,
-    ClientOptions,
-    DecoratedResponse,
-    DecoratedResponsePromise,
-    RequestInitArg,
-    Modifiers,
-} from "@/types";
-import { callbackStore, mergeInits } from "@/utils";
+import { Client, ClientOptions, DecoratedResponse, RequestInitArg } from "@/types";
+import { callbackStore, decorateResponsePromise, mergeInits } from "@/utils";
 
 export const createClient = (options: ClientOptions = {}): Client => {
     /**
      * Setup our callback registry
      */
-    let callbacks: {
-        onRequestStart: CallbackStore<Callbacks["onRequestStart"]>;
-        onSuccessResponse: CallbackStore<Callbacks["onSuccessResponse"]>;
-        onErrorResponse: CallbackStore<Callbacks["onErrorResponse"]>;
-        onClientError: CallbackStore<Callbacks["onClientError"]>;
+    let callbacks = {
+        onRequestStart: callbackStore(options.callbacks?.onRequestStart),
+        onSuccessResponse: callbackStore(options.callbacks?.onSuccessResponse),
+        onErrorResponse: callbackStore(options.callbacks?.onErrorResponse),
+        onClientError: callbackStore(options.callbacks?.onClientError),
     };
 
     /**
      * Setup our modifiers registry
      */
-    let modifiers: {
-        beforeRequest: CallbackStore<Modifiers["beforeRequest"]>;
-        beforeSuccessResponse: CallbackStore<Modifiers["beforeSuccessResponse"]>;
-        beforeErrorResponse: CallbackStore<Modifiers["beforeErrorResponse"]>;
+    let modifiers = {
+        beforeRequest: callbackStore(options.modifiers?.beforeRequest),
+        beforeSuccessResponse: callbackStore(options.modifiers?.beforeSuccessResponse),
+        beforeErrorResponse: callbackStore(options.modifiers?.beforeErrorResponse),
     };
 
     /**
      * Setup out default per-method request inits
      */
-    let defaults: {
-        common: RequestInitArg[];
-        request: RequestInitArg[];
-        get: RequestInitArg[];
-        put: RequestInitArg[];
-        post: RequestInitArg[];
-        patch: RequestInitArg[];
-        delete: RequestInitArg[];
-        options: RequestInitArg[];
-        head: RequestInitArg[];
+    let defaults = {
+        common: new Array<RequestInitArg>(options.defaults?.common),
+        request: new Array<RequestInitArg>(options.defaults?.request),
+        get: new Array<RequestInitArg>({ method: "GET" }, options.defaults?.get),
+        put: new Array<RequestInitArg>({ method: "PUT" }, options.defaults?.put),
+        post: new Array<RequestInitArg>({ method: "POST" }, options.defaults?.post),
+        patch: new Array<RequestInitArg>({ method: "PATCH" }, options.defaults?.patch),
+        delete: new Array<RequestInitArg>({ method: "DELETE" }, options.defaults?.delete),
+        options: new Array<RequestInitArg>({ method: "OPTIONS" }, options.defaults?.options),
+        head: new Array<RequestInitArg>({ method: "HEAD" }, options.defaults?.head),
     };
 
-    let baseUrl: string | undefined;
-
-    /**
-     * `_configure()` initialises all the per-method defaults, callbacks &
-     * modifiers. It's called once internally to build the client with the
-     * options provided to `createClient()` but is also exposed publically as
-     * `client.configure()` so you can overwrite the client options at a later
-     * point.
-     */
-    const _configure = (options: ClientOptions = {}) => {
-        callbacks = {
-            onRequestStart: callbackStore(options.callbacks?.onRequestStart),
-            onSuccessResponse: callbackStore(options.callbacks?.onSuccessResponse),
-            onErrorResponse: callbackStore(options.callbacks?.onErrorResponse),
-            onClientError: callbackStore(options.callbacks?.onClientError),
-        };
-
-        modifiers = {
-            beforeRequest: callbackStore(options.modifiers?.beforeRequest),
-            beforeSuccessResponse: callbackStore(options.modifiers?.beforeSuccessResponse),
-            beforeErrorResponse: callbackStore(options.modifiers?.beforeErrorResponse),
-        };
-
-        defaults = {
-            common: [options.defaults?.common],
-            request: [options.defaults?.request],
-            get: [{ method: "GET" }, options.defaults?.get],
-            put: [{ method: "PUT" }, options.defaults?.put],
-            post: [{ method: "POST" }, options.defaults?.post],
-            patch: [{ method: "PATCH" }, options.defaults?.patch],
-            delete: [{ method: "DELETE" }, options.defaults?.delete],
-            options: [{ method: "OPTIONS" }, options.defaults?.options],
-            head: [{ method: "HEAD" }, options.defaults?.head],
-        };
-
-        baseUrl = options.baseUrl;
-    };
-
-    /**
-     * Decorate the promise returned from a request method with some response body shortcut methods .
-     * - await f.get().json()
-     * - await f.get().text()
-     * - await f.get().blob()
-     * - await f.get().formData()
-     * - await f.get().arrayBuffer()
-     */
-    const _decorateResponsePromise = (
-        promise: Promise<DecoratedResponse>
-    ): DecoratedResponsePromise => {
-        const decoratedPromise = promise as DecoratedResponsePromise;
-
-        decoratedPromise.json = async <T = unknown>() => {
-            const response = await promise;
-            return response.json<T>();
-        };
-
-        decoratedPromise.text = async () => {
-            const response = await promise;
-            return response.text();
-        };
-
-        decoratedPromise.blob = async () => {
-            const response = await promise;
-            return response.blob();
-        };
-
-        decoratedPromise.formData = async () => {
-            const response = await promise;
-            return response.formData();
-        };
-
-        decoratedPromise.arrayBuffer = async () => {
-            const response = await promise;
-            return response.arrayBuffer();
-        };
-
-        return decoratedPromise;
-    };
+    let baseUrl = options.baseUrl;
 
     /**
      * `_createMethod()` is where all the complex stuff happens. It's what we
@@ -270,18 +184,11 @@ export const createClient = (options: ClientOptions = {}): Client => {
                 }
             })();
 
-            return _decorateResponsePromise(result);
+            return decorateResponsePromise(result);
         };
     };
 
-    /**
-     * Setup the client with initial per-method defaults, callbacks & modifiers
-     */
-    _configure(options);
-
     return {
-        configure: _configure,
-
         request: _createMethod(() => defaults.request),
 
         get: _createMethod(() => defaults.get),
@@ -303,6 +210,35 @@ export const createClient = (options: ClientOptions = {}): Client => {
             beforeRequest: cb => modifiers.beforeRequest.register(cb),
             beforeSuccessResponse: cb => modifiers.beforeSuccessResponse.register(cb),
             beforeErrorResponse: cb => modifiers.beforeErrorResponse.register(cb),
+        },
+
+        configure: (options: ClientOptions = {}) => {
+            callbacks = {
+                onRequestStart: callbackStore(options.callbacks?.onRequestStart),
+                onSuccessResponse: callbackStore(options.callbacks?.onSuccessResponse),
+                onErrorResponse: callbackStore(options.callbacks?.onErrorResponse),
+                onClientError: callbackStore(options.callbacks?.onClientError),
+            };
+
+            modifiers = {
+                beforeRequest: callbackStore(options.modifiers?.beforeRequest),
+                beforeSuccessResponse: callbackStore(options.modifiers?.beforeSuccessResponse),
+                beforeErrorResponse: callbackStore(options.modifiers?.beforeErrorResponse),
+            };
+
+            defaults = {
+                common: [options.defaults?.common],
+                request: [options.defaults?.request],
+                get: [{ method: "GET" }, options.defaults?.get],
+                put: [{ method: "PUT" }, options.defaults?.put],
+                post: [{ method: "POST" }, options.defaults?.post],
+                patch: [{ method: "PATCH" }, options.defaults?.patch],
+                delete: [{ method: "DELETE" }, options.defaults?.delete],
+                options: [{ method: "OPTIONS" }, options.defaults?.options],
+                head: [{ method: "HEAD" }, options.defaults?.head],
+            };
+
+            baseUrl = options.baseUrl;
         },
     };
 };
