@@ -149,27 +149,6 @@ describe("createClient", () => {
         });
     });
 
-    test("It lets you instantiate the client with some build in modifiers", async () => {
-        nock(HOST)
-            .post("/api/user", { id: "6686" })
-            .matchHeader("X-CSRF", "token-123")
-            .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 });
-
-        const f = createClient({
-            modifiers: {
-                beforeRequest: [
-                    ({ request }) => {
-                        request.headers.set("X-CSRF", "token-123");
-                    },
-                ],
-            },
-        });
-
-        const user = await f.post(HOST + "/api/user", { json: { id: "6686" } }).json<User>();
-
-        expect(user).toEqual({ firstName: "Shane", lastName: "MacGowan", age: 65 });
-    });
-
     describe("baseUrl", () => {
         test("When you specify a base URL it's used for all requests", async () => {
             nock(HOST)

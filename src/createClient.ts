@@ -14,15 +14,6 @@ export const createClient = (options: ClientOptions = {}): Client => {
     };
 
     /**
-     * Setup our modifiers registry
-     */
-    let modifiers = {
-        beforeRequest: callbackStore(options.modifiers?.beforeRequest),
-        beforeSuccessResponse: callbackStore(options.modifiers?.beforeSuccessResponse),
-        beforeErrorResponse: callbackStore(options.modifiers?.beforeErrorResponse),
-    };
-
-    /**
      * Setup out default per-method request inits
      */
     let defaults = {
@@ -95,10 +86,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
                      * Build the request by first combining all the request options
                      * and then passing it through any `beforeRequest` modifiers
                      */
-                    const request = await modifiers.beforeRequest.reduce(
-                        (acc, cb) => cb({ request: acc }),
-                        new Request(requestInfo, combinedRequestInit)
-                    );
+                    const request = new Request(requestInfo, combinedRequestInit);
 
                     /**
                      * Emit to the onRequestStart callback
@@ -108,21 +96,12 @@ export const createClient = (options: ClientOptions = {}): Client => {
                     /**
                      * Make the request
                      */
-                    let baseResponse: Response;
+                    let response: Response;
                     try {
-                        baseResponse = await fetch(request);
+                        response = await fetch(request);
                     } catch (e) {
                         throw new NetworkError(request, e);
                     }
-
-                    /**
-                     * Form the final response by piping it through all
-                     * beforeSuccessResponse modifiers
-                     */
-                    const response = await modifiers.beforeSuccessResponse.reduce(
-                        (acc, cb) => cb({ request, response: acc }),
-                        baseResponse
-                    );
 
                     /**
                      * Convert non `2xx` responses into an HttpError
@@ -161,26 +140,19 @@ export const createClient = (options: ClientOptions = {}): Client => {
                     };
 
                     return decoratedResponse;
-                } catch (e) {
-                    if (e instanceof HttpError || e instanceof NetworkError) {
-                        const error = await modifiers.beforeErrorResponse.reduce(
-                            (acc, cb) => cb({ request: e.request, error: acc }),
-                            e
-                        );
-
+                } catch (error) {
+                    if (error instanceof HttpError || error instanceof NetworkError) {
                         await callbacks.onErrorResponse.emit({
-                            request: e.request,
+                            request: error.request,
                             error,
                         });
 
                         throw error;
                     }
 
-                    await callbacks.onClientError.emit({
-                        error: e,
-                    });
+                    await callbacks.onClientError.emit({ error });
 
-                    throw e;
+                    throw error;
                 }
             })();
 
@@ -206,24 +178,12 @@ export const createClient = (options: ClientOptions = {}): Client => {
             onClientError: cb => callbacks.onClientError.register(cb),
         },
 
-        modifiers: {
-            beforeRequest: cb => modifiers.beforeRequest.register(cb),
-            beforeSuccessResponse: cb => modifiers.beforeSuccessResponse.register(cb),
-            beforeErrorResponse: cb => modifiers.beforeErrorResponse.register(cb),
-        },
-
         configure: (options: ClientOptions = {}) => {
             callbacks = {
                 onRequestStart: callbackStore(options.callbacks?.onRequestStart),
                 onSuccessResponse: callbackStore(options.callbacks?.onSuccessResponse),
                 onErrorResponse: callbackStore(options.callbacks?.onErrorResponse),
                 onClientError: callbackStore(options.callbacks?.onClientError),
-            };
-
-            modifiers = {
-                beforeRequest: callbackStore(options.modifiers?.beforeRequest),
-                beforeSuccessResponse: callbackStore(options.modifiers?.beforeSuccessResponse),
-                beforeErrorResponse: callbackStore(options.modifiers?.beforeErrorResponse),
             };
 
             defaults = {

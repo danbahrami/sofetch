@@ -5,23 +5,9 @@ export type Callbacks = {
     onSuccessResponse: (details: { request: Request; response: Response }) => Promise<void> | void;
     onErrorResponse: (details: {
         request: Request;
-        error: HttpError | NetworkError | Error;
+        error: HttpError | NetworkError;
     }) => Promise<void> | void;
     onClientError: (details: { error: unknown }) => Promise<void> | void;
-};
-
-export type Modifiers = {
-    beforeRequest: (details: {
-        request: Request;
-    }) => Promise<Request> | Promise<void> | Request | void;
-    beforeSuccessResponse: (details: {
-        request: Request;
-        response: Response;
-    }) => Promise<Response> | Promise<void> | Response | void;
-    beforeErrorResponse: (details: {
-        request: Request;
-        error: Error;
-    }) => Promise<Error> | Promise<void> | Error | void;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -83,11 +69,6 @@ export type ClientOptions = {
         onSuccessResponse?: Callbacks["onSuccessResponse"][];
         onErrorResponse?: Callbacks["onErrorResponse"][];
         onClientError?: Callbacks["onClientError"][];
-    };
-    modifiers?: {
-        beforeRequest?: Modifiers["beforeRequest"][];
-        beforeSuccessResponse?: Modifiers["beforeSuccessResponse"][];
-        beforeErrorResponse?: Modifiers["beforeErrorResponse"][];
     };
     baseUrl?: string;
 };
@@ -164,12 +145,6 @@ export type Client = {
         onClientError: Subscription<Callbacks["onClientError"]>;
     };
 
-    modifiers: {
-        beforeRequest: Subscription<Modifiers["beforeRequest"]>;
-        beforeSuccessResponse: Subscription<Modifiers["beforeSuccessResponse"]>;
-        beforeErrorResponse: Subscription<Modifiers["beforeErrorResponse"]>;
-    };
-
     configure: (options?: ClientOptions) => void;
 };
 
@@ -181,20 +156,9 @@ export type Client = {
  */
 export type RequestInitArg = RequestInit | (() => RequestInit) | (() => undefined) | undefined;
 
-// a little helper type that helps us infer a return type from a function that
-// mar or may not be async.
-type MaybePromise<T> = Promise<T> | T;
-
-export type Reduce<TFn> = TFn extends (
-    ...arg: any // eslint-disable-line @typescript-eslint/no-explicit-any
-) => MaybePromise<void | infer U>
-    ? (reducer: (accumulator: U, callback: TFn) => MaybePromise<U | void>, initialValue: U) => U
-    : never;
-
 export type CallbackStore<
     TFn extends (...arg: any) => any, // eslint-disable-line @typescript-eslint/no-explicit-any
 > = {
     register: (cb: TFn) => () => void;
     emit: (...args: Parameters<TFn>) => Promise<void>;
-    reduce: Reduce<TFn>;
 };

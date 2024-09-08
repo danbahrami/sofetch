@@ -1,7 +1,6 @@
 import {
     CallbackStore,
     RequestInitArg,
-    Reduce,
     DecoratedResponsePromise,
     DecoratedResponse,
 } from "@/types";
@@ -67,15 +66,6 @@ export const callbackStore = <
                 await cb(...args);
             }
         },
-        reduce: (async (reducer, initialValue) => {
-            let result = await initialValue;
-
-            for (const cb of store) {
-                result = (await reducer(result, cb)) || result;
-            }
-
-            return result;
-        }) as Reduce<TFn>,
     };
 };
 
