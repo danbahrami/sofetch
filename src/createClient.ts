@@ -8,7 +8,7 @@ import {
     DecoratedResponsePromise,
     Modifiers,
 } from "@/types";
-import { callbackStore, mergeHeaders } from "@/utils";
+import { callbackStore, mergeInits } from "@/utils";
 
 export const createClient = (options: ClientOptions = {}): Client => {
     /**
@@ -34,6 +34,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
      * Setup out default per-method request inits
      */
     let defaults: {
+        common: RequestInit;
         request: RequestInit;
         get: RequestInit;
         put: RequestInit;
@@ -42,8 +43,9 @@ export const createClient = (options: ClientOptions = {}): Client => {
         delete: RequestInit;
         options: RequestInit;
         head: RequestInit;
-        baseUrl: string | undefined;
     };
+
+    let baseUrl: string | undefined;
 
     /**
      * `_configure()` initialises all the per-method defaults, callbacks &
@@ -67,6 +69,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
         };
 
         defaults = {
+            common: { ...options.defaults?.common },
             request: { ...options.defaults?.request },
             get: { method: "GET", ...options.defaults?.get },
             put: { method: "PUT", ...options.defaults?.put },
@@ -75,8 +78,9 @@ export const createClient = (options: ClientOptions = {}): Client => {
             delete: { method: "DELETE", ...options.defaults?.delete },
             options: { method: "OPTIONS", ...options.defaults?.options },
             head: { method: "HEAD", ...options.defaults?.head },
-            baseUrl: options.baseUrl,
         };
+
+        baseUrl = options.baseUrl;
     };
 
     /**
@@ -134,26 +138,22 @@ export const createClient = (options: ClientOptions = {}): Client => {
                      * default if JSON is passed as the request body.
                      */
                     const { json, ...requestInit } = init ?? {};
-                    const defaultInit = getDefaultInit();
-                    const combinedRequestInit: RequestInit = {
-                        ...defaultInit,
-                        ...requestInit,
-                        headers: mergeHeaders([
-                            json ? { "content-type": "application/json" } : {},
-                            defaultInit.headers,
-                            requestInit.headers,
-                        ]),
-                    };
+                    const combinedRequestInit = mergeInits(
+                        json ? { headers: { "content-type": "application/json" } } : undefined,
+                        defaults.common,
+                        getDefaultInit,
+                        requestInit
+                    );
 
                     // Append the base URL
                     let requestInfo = info;
 
                     if (!(info instanceof Request)) {
                         try {
-                            requestInfo = new URL(info, defaults.baseUrl);
+                            requestInfo = new URL(info, baseUrl);
                         } catch (e) {
                             throw new TypeError(`Could not build valid URL from parts:
-                                baseUrl: "${defaults.baseUrl}"
+                                baseUrl: "${baseUrl}"
                                 path: "${info}"
                             `);
                         }

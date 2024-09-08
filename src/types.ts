@@ -76,6 +76,7 @@ export type ClientOptions = {
         delete?: Omit<RequestInit, "method">;
         options?: Omit<RequestInit, "method">;
         head?: Omit<RequestInit, "method">;
+        common?: Omit<RequestInit, "method">;
     };
     callbacks?: {
         onRequestStart?: Callbacks["onRequestStart"][];

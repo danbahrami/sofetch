@@ -47,6 +47,40 @@ describe("createClient", () => {
         expect(response2).toEqual({ firstName: "Bob", lastName: "Dylan", age: 83 });
     });
 
+    test("The order of precedence for configs is common default -> method default -> request", async () => {
+        const f = createClient({
+            defaults: {
+                common: {
+                    headers: {
+                        "header-1": "common-header-1",
+                        "header-2": "common-header-2",
+                        "header-3": "common-header-3",
+                    },
+                },
+                get: {
+                    headers: {
+                        "header-2": "get-header-2",
+                        "header-3": "get-header-3",
+                        "header-4": "get-header-4",
+                    },
+                },
+            },
+        });
+
+        nock(HOST)
+            .get("/api/user")
+            .matchHeader("header-1", "common-header-1")
+            .matchHeader("header-2", "get-header-2")
+            .matchHeader("header-3", "request-header-3")
+            .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 });
+
+        const user = await f
+            .get(HOST + "/api/user", { headers: { "header-3": "request-header-3" } })
+            .json<User>();
+
+        expect(user).toEqual({ firstName: "Shane", lastName: "MacGowan", age: 65 });
+    });
+
     test("It lets you instantiate the client with some built in callbacks", async () => {
         nock(HOST)
             .post("/api/user", { id: "6686" })

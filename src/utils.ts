@@ -8,12 +8,38 @@ export const mergeHeaders = (inits: (HeadersInit | undefined)[]): Headers => {
     const result: Record<string, string> = {};
 
     for (const init of inits) {
+        if (!init) continue;
+
         new Headers(init).forEach((value, key) => {
             result[key] = value;
         });
     }
 
     return new Headers(result);
+};
+
+export const mergeInits = (
+    ...inits: (RequestInit | (() => RequestInit) | undefined)[]
+): RequestInit => {
+    let result: RequestInit = {};
+    const headers: HeadersInit[] = [];
+
+    for (const init of inits) {
+        if (!init) continue;
+
+        const r = typeof init === "function" ? init() : init;
+
+        if (r.headers) {
+            headers.push(r.headers);
+        }
+
+        result = { ...result, ...r };
+    }
+
+    return {
+        ...result,
+        headers: mergeHeaders(headers),
+    };
 };
 
 /**
