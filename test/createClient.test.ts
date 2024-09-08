@@ -81,6 +81,39 @@ describe("createClient", () => {
         expect(user).toEqual({ firstName: "Shane", lastName: "MacGowan", age: 65 });
     });
 
+    test("You can pass request init factory functions to create a new default init on each request", async () => {
+        let requestCount = 0;
+
+        const f = createClient({
+            baseUrl: HOST,
+            defaults: {
+                common: () => ({
+                    headers: {
+                        "request-count": `${requestCount++}`,
+                    },
+                }),
+            },
+        });
+
+        nock(HOST)
+            .get("/api/user")
+            .matchHeader("request-count", "0")
+            .once()
+            .reply(200)
+            .get("/api/user")
+            .matchHeader("request-count", "1")
+            .once()
+            .reply(200)
+            .get("/api/user")
+            .matchHeader("request-count", "2")
+            .once()
+            .reply(200);
+
+        await f.get("/api/user");
+        await f.get("/api/user");
+        await f.get("/api/user");
+    });
+
     test("It lets you instantiate the client with some built in callbacks", async () => {
         nock(HOST)
             .post("/api/user", { id: "6686" })

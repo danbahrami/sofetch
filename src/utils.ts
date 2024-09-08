@@ -1,4 +1,4 @@
-import { CallbackStore, Reduce } from "@/types";
+import { CallbackStore, RequestInitArg, Reduce } from "@/types";
 
 /**
  * Headers can be passed to a request in several formats. This utility combines
@@ -18,22 +18,20 @@ export const mergeHeaders = (inits: (HeadersInit | undefined)[]): Headers => {
     return new Headers(result);
 };
 
-export const mergeInits = (
-    ...inits: (RequestInit | (() => RequestInit) | undefined)[]
-): RequestInit => {
+export const mergeInits = (...initArgs: RequestInitArg[]): RequestInit => {
     let result: RequestInit = {};
     const headers: HeadersInit[] = [];
 
-    for (const init of inits) {
+    for (const initArg of initArgs) {
+        const init = typeof initArg === "function" ? initArg() : initArg;
+
         if (!init) continue;
 
-        const r = typeof init === "function" ? init() : init;
-
-        if (r.headers) {
-            headers.push(r.headers);
+        if (init.headers) {
+            headers.push(init.headers);
         }
 
-        result = { ...result, ...r };
+        result = { ...result, ...init };
     }
 
     return {

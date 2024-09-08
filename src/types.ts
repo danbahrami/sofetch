@@ -68,15 +68,15 @@ export type DecoratedResponsePromise = Omit<Promise<DecoratedResponse>, "json"> 
 
 export type ClientOptions = {
     defaults?: {
-        request?: RequestInit;
-        get?: Omit<RequestInit, "method">;
-        put?: Omit<RequestInit, "method">;
-        post?: Omit<RequestInit, "method">;
-        patch?: Omit<RequestInit, "method">;
-        delete?: Omit<RequestInit, "method">;
-        options?: Omit<RequestInit, "method">;
-        head?: Omit<RequestInit, "method">;
-        common?: Omit<RequestInit, "method">;
+        request?: RequestInit | (() => RequestInit);
+        get?: Omit<RequestInit, "method"> | (() => Omit<RequestInit, "method">);
+        put?: Omit<RequestInit, "method"> | (() => Omit<RequestInit, "method">);
+        post?: Omit<RequestInit, "method"> | (() => Omit<RequestInit, "method">);
+        patch?: Omit<RequestInit, "method"> | (() => Omit<RequestInit, "method">);
+        delete?: Omit<RequestInit, "method"> | (() => Omit<RequestInit, "method">);
+        options?: Omit<RequestInit, "method"> | (() => Omit<RequestInit, "method">);
+        head?: Omit<RequestInit, "method"> | (() => Omit<RequestInit, "method">);
+        common?: Omit<RequestInit, "method"> | (() => Omit<RequestInit, "method">);
     };
     callbacks?: {
         onRequestStart?: Callbacks["onRequestStart"][];
@@ -190,3 +190,11 @@ export type CallbackStore<
     emit: (...args: Parameters<TFn>) => Promise<void>;
     reduce: Reduce<TFn>;
 };
+
+/**
+ * This utility type helps us pass around a value that is either
+ * - a RequestInit object
+ * - a function that returns a RequestInit object
+ * - undefined
+ */
+export type RequestInitArg = RequestInit | (() => RequestInit) | (() => undefined) | undefined;

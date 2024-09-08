@@ -6,6 +6,7 @@ import {
     ClientOptions,
     DecoratedResponse,
     DecoratedResponsePromise,
+    RequestInitArg,
     Modifiers,
 } from "@/types";
 import { callbackStore, mergeInits } from "@/utils";
@@ -34,15 +35,15 @@ export const createClient = (options: ClientOptions = {}): Client => {
      * Setup out default per-method request inits
      */
     let defaults: {
-        common: RequestInit;
-        request: RequestInit;
-        get: RequestInit;
-        put: RequestInit;
-        post: RequestInit;
-        patch: RequestInit;
-        delete: RequestInit;
-        options: RequestInit;
-        head: RequestInit;
+        common: RequestInitArg[];
+        request: RequestInitArg[];
+        get: RequestInitArg[];
+        put: RequestInitArg[];
+        post: RequestInitArg[];
+        patch: RequestInitArg[];
+        delete: RequestInitArg[];
+        options: RequestInitArg[];
+        head: RequestInitArg[];
     };
 
     let baseUrl: string | undefined;
@@ -69,15 +70,15 @@ export const createClient = (options: ClientOptions = {}): Client => {
         };
 
         defaults = {
-            common: { ...options.defaults?.common },
-            request: { ...options.defaults?.request },
-            get: { method: "GET", ...options.defaults?.get },
-            put: { method: "PUT", ...options.defaults?.put },
-            post: { method: "POST", ...options.defaults?.post },
-            patch: { method: "PATCH", ...options.defaults?.patch },
-            delete: { method: "DELETE", ...options.defaults?.delete },
-            options: { method: "OPTIONS", ...options.defaults?.options },
-            head: { method: "HEAD", ...options.defaults?.head },
+            common: [options.defaults?.common],
+            request: [options.defaults?.request],
+            get: [{ method: "GET" }, options.defaults?.get],
+            put: [{ method: "PUT" }, options.defaults?.put],
+            post: [{ method: "POST" }, options.defaults?.post],
+            patch: [{ method: "PATCH" }, options.defaults?.patch],
+            delete: [{ method: "DELETE" }, options.defaults?.delete],
+            options: [{ method: "OPTIONS" }, options.defaults?.options],
+            head: [{ method: "HEAD" }, options.defaults?.head],
         };
 
         baseUrl = options.baseUrl;
@@ -128,7 +129,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
      * `_createMethod()` is where all the complex stuff happens. It's what we
      * use to build the public methods: `.get()`, `.post()`, `.request()` etc.
      */
-    const _createMethod = (getDefaultInit: () => RequestInit) => {
+    const _createMethod = (getDefaultInit: () => RequestInitArg[]) => {
         return (info: RequestInfo | URL, init?: RequestInit & { json?: unknown }) => {
             const result = (async (): Promise<DecoratedResponse> => {
                 try {
@@ -140,8 +141,8 @@ export const createClient = (options: ClientOptions = {}): Client => {
                     const { json, ...requestInit } = init ?? {};
                     const combinedRequestInit = mergeInits(
                         json ? { headers: { "content-type": "application/json" } } : undefined,
-                        defaults.common,
-                        getDefaultInit,
+                        ...defaults.common,
+                        ...getDefaultInit(),
                         requestInit
                     );
 
