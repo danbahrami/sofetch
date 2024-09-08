@@ -10,9 +10,6 @@ export type Callbacks = {
     onClientError: (details: { error: unknown }) => Promise<void> | void;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Subscription<T extends (arg: any) => any> = (arg: T) => () => void;
-
 /**
  * This type enhances the default Response type so that you can pass a generic
  * return type to the `.json()` function.
@@ -52,7 +49,7 @@ export type DecoratedResponsePromise = Omit<Promise<DecoratedResponse>, "json"> 
     arrayBuffer: () => Promise<ArrayBuffer>;
 };
 
-export type ClientOptions = {
+export type SoFetchClientOptions = {
     defaults?: {
         request?: RequestInit | (() => RequestInit);
         get?: Omit<RequestInit, "method"> | (() => Omit<RequestInit, "method">);
@@ -73,7 +70,7 @@ export type ClientOptions = {
     baseUrl?: string;
 };
 
-export type Client = {
+export type SoFetchClient = {
     /**
      * Perform an HTTP request using any HTTP method (defaults to GET)
      */
@@ -139,13 +136,13 @@ export type Client = {
     ) => DecoratedResponsePromise;
 
     callbacks: {
-        onRequestStart: Subscription<Callbacks["onRequestStart"]>;
-        onSuccessResponse: Subscription<Callbacks["onSuccessResponse"]>;
-        onErrorResponse: Subscription<Callbacks["onErrorResponse"]>;
-        onClientError: Subscription<Callbacks["onClientError"]>;
+        onRequestStart: (cb: Callbacks["onRequestStart"]) => () => void;
+        onSuccessResponse: (cb: Callbacks["onSuccessResponse"]) => () => void;
+        onErrorResponse: (cb: Callbacks["onErrorResponse"]) => () => void;
+        onClientError: (cb: Callbacks["onClientError"]) => () => void;
     };
 
-    configure: (options?: ClientOptions) => void;
+    configure: (options?: SoFetchClientOptions) => void;
 };
 
 /**

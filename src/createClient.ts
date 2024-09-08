@@ -1,8 +1,8 @@
 import { HttpError, JsonParseError, JsonStringifyError, NetworkError } from "@/errors";
-import { Client, ClientOptions, DecoratedResponse, RequestInitArg } from "@/types";
+import { SoFetchClient, SoFetchClientOptions, DecoratedResponse, RequestInitArg } from "@/types";
 import { callbackStore, decorateResponsePromise, mergeInits } from "@/utils";
 
-export const createClient = (options: ClientOptions = {}): Client => {
+export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient => {
     /**
      * Setup our callback registry
      */
@@ -178,7 +178,7 @@ export const createClient = (options: ClientOptions = {}): Client => {
             onClientError: cb => callbacks.onClientError.register(cb),
         },
 
-        configure: (options: ClientOptions = {}) => {
+        configure: (options: SoFetchClientOptions = {}) => {
             callbacks = {
                 onRequestStart: callbackStore(options.callbacks?.onRequestStart),
                 onSuccessResponse: callbackStore(options.callbacks?.onSuccessResponse),
