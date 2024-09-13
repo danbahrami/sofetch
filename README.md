@@ -36,7 +36,7 @@ const result = await f
     .json<PasswordResetResult>();
 ```
 
-## Making requests
+## Making requests
 
 `SoFetch` offers shortcuts for the following HTTP Methods:
 
