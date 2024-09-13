@@ -4,10 +4,10 @@ import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 
 const fileName = {
-    es: "sofetch.js",
-    iife: "sofetch.iife.js",
-    cjs: "sofetch.cjs.js",
-    umd: "sofetch.umd.js",
+    es: "index.js",
+    iife: "index.iife.js",
+    cjs: "index.cjs.js",
+    umd: "index.umd.js",
 };
 
 export default defineConfig({

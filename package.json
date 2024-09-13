@@ -5,7 +5,7 @@
     "type": "module",
     "exports": {
         ".": {
-            "import": "./dist/sofetch.js"
+            "import": "./dist/index.js"
         },
         "./dist/": {
             "import": "./dist/"
@@ -14,7 +14,7 @@
     "types": "./dist/index.d.ts",
     "scripts": {
         "dev": "vite --host",
-        "build": "rimraf dist/**/* && tsc && vite build && dts-bundle-generator --config ./dts-bundle-generator.config.ts",
+        "build": "rimraf dist/**/* && tsc && vite build",
         "test": "vitest",
         "test:coverage": "vitest --coverage",
         "lint:scripts": "eslint . --ext .ts",
