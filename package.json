@@ -1,5 +1,5 @@
 {
-    "name": "sofetch",
+    "name": "@danbahrami/sofetch",
     "version": "1.0.0-0",
     "module": "./dist/sofetch.js",
     "type": "module",
