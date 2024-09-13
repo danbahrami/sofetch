@@ -1,26 +1,13 @@
 /// <reference types="vitest" />
 import path from "path";
 import { defineConfig } from "vite";
-import packageJson from "./package.json";
-
-const getPackageName = () => {
-    return packageJson.name;
-};
-
-const getPackageNameCamelCase = () => {
-    try {
-        return getPackageName().replace(/-./g, char => char[1].toUpperCase());
-    } catch (err) {
-        throw new Error("Name property in package.json is missing.");
-    }
-};
 
 const fileName = {
-    es: `${getPackageName()}.js`,
-    iife: `${getPackageName()}.iife.js`,
+    es: "sofetch.js",
+    iife: "sofetch.iife.js",
+    cjs: "sofetch.cjs.js",
+    umd: "sofetch.umd.js",
 };
-
-const formats = Object.keys(fileName) as Array<keyof typeof fileName>;
 
 export default defineConfig({
     base: "./",
@@ -28,8 +15,8 @@ export default defineConfig({
         outDir: "./build/dist",
         lib: {
             entry: path.resolve(__dirname, "src/index.ts"),
-            name: getPackageNameCamelCase(),
-            formats,
+            name: "sofetch",
+            formats: ["es", "iife", "cjs", "umd"],
             fileName: format => fileName[format],
         },
     },

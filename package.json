@@ -57,8 +57,11 @@
     "main": "dist/sofetch.js",
     "repository": {
         "type": "git",
-        "url": "danbahrami/sofetch.git"
+        "url": "https://github.com/danbahrami/sofetch"
     },
+    "files": [
+        "build"
+    ],
     "keywords": [
         "fetch",
         "http",
