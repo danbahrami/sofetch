@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import path from "path";
 import { defineConfig } from "vite";
+import dts from "vite-plugin-dts";
 
 const fileName = {
     es: "sofetch.js",
@@ -12,7 +13,7 @@ const fileName = {
 export default defineConfig({
     base: "./",
     build: {
-        outDir: "./build/dist",
+        outDir: "./dist",
         lib: {
             entry: path.resolve(__dirname, "src/index.ts"),
             name: "sofetch",
@@ -20,6 +21,7 @@ export default defineConfig({
             fileName: format => fileName[format],
         },
     },
+    plugins: [dts({ rollupTypes: true })],
     test: {
         watch: false,
     },
