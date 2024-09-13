@@ -14,7 +14,7 @@ Key features:
 
 ## Installation
 
-```
+```sh
 # NPM
 npm install @danbahrami/sofetch
 
@@ -49,13 +49,13 @@ const result = await f
 -   `f.head()` sends an `HEAD` request
 
 ```ts
-f.get("https://example.com/api/user");
+await f.get("https://example.com/api/user");
 ```
 
 Additionally there is `f.request()` which you can pass a method to. If no method is given it will default to `GET`.
 
 ```ts
-f.request("https://example.com/api/user", { method: "delete" });
+await f.request("https://example.com/api/user", { method: "delete" });
 ```
 
 ## Sending JSON
@@ -63,7 +63,7 @@ f.request("https://example.com/api/user", { method: "delete" });
 You can send JSON with any request (as long as the method supports it) like this:
 
 ```ts
-f.post("/api/user", {
+await f.post("/api/user", {
     json: {
         username: "admin",
         password: "password",
@@ -95,7 +95,7 @@ You can also do this on the response object like you would with fetch
 ```ts
 // async/await example
 const response = await f.get("/api/user");
-const user = response.json<User>();
+const user = await response.json<User>();
 
 // promise.then example
 const user = await f.get("/api/user").then(response => response.json<User>());
@@ -106,7 +106,7 @@ const user = await f.get("/api/user").then(response => response.json<User>());
 You can pass request properties such as `body`, `headers`, `mode`, `redirect` etc. to all client methods. The
 
 ```ts
-f.post("https://example.com/api/login", {
+await f.post("https://example.com/api/login", {
     body: new FormData(loginForm),
     headers: {
         "X-CSRF": "123456",
@@ -147,7 +147,7 @@ f.configure({
     baseUrl: "http://example.com/api",
 });
 
-const user = f.get("/user").json<User>();
+const user = await f.get("/user").json<User>();
 ```
 
 > 💡 If you do pass a full URL when making a request that will take priority over the base URL.
