@@ -1,9 +1,5 @@
-import {
-    CallbackStore,
-    RequestInitArg,
-    DecoratedResponsePromise,
-    DecoratedResponse,
-} from "@/types";
+import { DecoratedResponsePromise, DecoratedResponse } from "@/types.public";
+import { CallbackStore, InitDefault } from "@/types.internal";
 
 /**
  * Headers can be passed to a request in several formats. This utility combines
@@ -23,7 +19,18 @@ export const mergeHeaders = (inits: (HeadersInit | undefined)[]): Headers => {
     return new Headers(result);
 };
 
-export const mergeInits = (...initArgs: RequestInitArg[]): RequestInit => {
+/**
+ * In the client we pass around request init values in various different
+ * formats:
+ * - A single RequestInit object
+ * - A function that returns a RequestInit
+ * - undefined because these things are optional
+ * - An array of all of the above
+ *
+ * This utility type lets us resolve all of those down into a single RequestInit
+ * object.
+ */
+export const mergeInits = (...initArgs: InitDefault[]): RequestInit => {
     let result: RequestInit = {};
     const headers: HeadersInit[] = [];
 
@@ -46,8 +53,8 @@ export const mergeInits = (...initArgs: RequestInitArg[]): RequestInit => {
 };
 
 /**
- * Provides mechanism for adding/removing callbacks and then emitting data to
- * all callbacks
+ * A callback store is a mechanism for adding/removing callbacks and then
+ * emitting events to those callbacks.
  */
 export const callbackStore = <
     TFn extends (...arg: any) => any, // eslint-disable-line @typescript-eslint/no-explicit-any

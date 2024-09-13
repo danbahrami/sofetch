@@ -2,7 +2,7 @@ import nock from "nock";
 import { describe, test, expect, vi } from "vitest";
 
 import { createClient } from "../src";
-import { Callbacks } from "@/types";
+import { Callbacks } from "@/types.public";
 
 type User = {
     firstName: string;

@@ -2,7 +2,7 @@ import nock from "nock";
 import { describe, test, expect, vi } from "vitest";
 
 import { f, HttpError, JsonParseError, JsonStringifyError, NetworkError } from "../src";
-import { Callbacks } from "@/types";
+import { Callbacks } from "@/types.public";
 
 const mockConsoleError = () => {
     return vi.spyOn(console, "error").mockImplementation(() => null);

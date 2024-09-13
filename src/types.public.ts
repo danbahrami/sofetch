@@ -1,12 +1,37 @@
 import { HttpError, NetworkError } from "./errors";
 
+/**
+ * Callbacks allow you to hook into requests, responses and errors. They're
+ * useful for global behaviours e.g. logging
+ */
 export type Callbacks = {
+    /**
+     * onRequestStart - called before making a request
+     */
     onRequestStart: (details: { request: Request }) => Promise<void> | void;
+
+    /**
+     * onSuccessResponse - called after a 2xx HTTP response
+     */
     onSuccessResponse: (details: { request: Request; response: Response }) => Promise<void> | void;
+
+    /**
+     * onErrorResponse - called after a 4xx or 5xx HTTP response or a network
+     * error
+     */
     onErrorResponse: (details: {
         request: Request;
         error: HttpError | NetworkError;
     }) => Promise<void> | void;
+
+    /**
+     * onClientError - called when a client error happens inside the client.
+     * Examples are:
+     * - {JsonStringifyError} Invalid JSON is passed to a request
+     * - {JsonParseError} `.json()` called on a non-JSON response
+     * - {Error} an error thrown in a callback
+     * - {Error} the author of this library messed up
+     */
     onClientError: (details: { error: unknown }) => Promise<void> | void;
 };
 
@@ -51,7 +76,6 @@ export type DecoratedResponsePromise = Omit<Promise<DecoratedResponse>, "json"> 
 
 export type SoFetchClientOptions = {
     defaults?: {
-        request?: RequestInit | (() => RequestInit);
         get?: Omit<RequestInit, "method"> | (() => Omit<RequestInit, "method">);
         put?: Omit<RequestInit, "method"> | (() => Omit<RequestInit, "method">);
         post?: Omit<RequestInit, "method"> | (() => Omit<RequestInit, "method">);
@@ -144,22 +168,3 @@ export type SoFetchClient = {
 
     configure: (options?: SoFetchClientOptions) => void;
 };
-
-/**
- * This utility type helps us pass around a value that is either
- * - a RequestInit object
- * - a function that returns a RequestInit object
- * - undefined
- */
-export type RequestInitArg = RequestInit | (() => RequestInit) | (() => undefined) | undefined;
-
-export type CallbackStore<
-    TFn extends (...arg: any) => any, // eslint-disable-line @typescript-eslint/no-explicit-any
-> = {
-    register: (cb: TFn) => () => void;
-    emit: (...args: Parameters<TFn>) => Promise<void>;
-};
-
-export type CreateMethod = (
-    getDefaultInit: (info: RequestInfo | URL, init?: RequestInit) => RequestInitArg[]
-) => (info: RequestInfo | URL, init?: RequestInit & { json?: unknown }) => DecoratedResponsePromise;

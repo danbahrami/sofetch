@@ -1,11 +1,6 @@
 import { HttpError, JsonParseError, JsonStringifyError, NetworkError } from "@/errors";
-import {
-    SoFetchClient,
-    SoFetchClientOptions,
-    DecoratedResponse,
-    RequestInitArg,
-    CreateMethod,
-} from "@/types";
+import { SoFetchClient, SoFetchClientOptions, DecoratedResponse } from "@/types.public";
+import { CreateMethod, InitDefault } from "@/types.internal";
 import { callbackStore, decorateResponsePromise, mergeInits } from "@/utils";
 
 export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient => {
@@ -23,14 +18,14 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
      * Setup out default per-method request inits
      */
     let defaults = {
-        common: new Array<RequestInitArg>(options.defaults?.common),
-        get: new Array<RequestInitArg>({ method: "GET" }, options.defaults?.get),
-        put: new Array<RequestInitArg>({ method: "PUT" }, options.defaults?.put),
-        post: new Array<RequestInitArg>({ method: "POST" }, options.defaults?.post),
-        patch: new Array<RequestInitArg>({ method: "PATCH" }, options.defaults?.patch),
-        delete: new Array<RequestInitArg>({ method: "DELETE" }, options.defaults?.delete),
-        options: new Array<RequestInitArg>({ method: "OPTIONS" }, options.defaults?.options),
-        head: new Array<RequestInitArg>({ method: "HEAD" }, options.defaults?.head),
+        common: new Array<InitDefault>(options.defaults?.common),
+        get: new Array<InitDefault>({ method: "GET" }, options.defaults?.get),
+        put: new Array<InitDefault>({ method: "PUT" }, options.defaults?.put),
+        post: new Array<InitDefault>({ method: "POST" }, options.defaults?.post),
+        patch: new Array<InitDefault>({ method: "PATCH" }, options.defaults?.patch),
+        delete: new Array<InitDefault>({ method: "DELETE" }, options.defaults?.delete),
+        options: new Array<InitDefault>({ method: "OPTIONS" }, options.defaults?.options),
+        head: new Array<InitDefault>({ method: "HEAD" }, options.defaults?.head),
     };
 
     let baseUrl = options.baseUrl;
@@ -39,7 +34,7 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
      * `_createMethod()` is where all the complex stuff happens. It's what we
      * use to build the public methods: `.get()`, `.post()`, `.request()` etc.
      */
-    const _createMethod: CreateMethod = getDefaultInit => (info, init) => {
+    const createMethod: CreateMethod = getDefaultInit => (info, init) => {
         const result = (async (): Promise<DecoratedResponse> => {
             try {
                 /**
@@ -165,19 +160,19 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
     };
 
     return {
-        get: _createMethod(() => defaults.get),
-        put: _createMethod(() => defaults.put),
-        post: _createMethod(() => defaults.post),
-        patch: _createMethod(() => defaults.patch),
-        delete: _createMethod(() => defaults.delete),
-        options: _createMethod(() => defaults.options),
-        head: _createMethod(() => defaults.head),
+        get: createMethod(() => defaults.get),
+        put: createMethod(() => defaults.put),
+        post: createMethod(() => defaults.post),
+        patch: createMethod(() => defaults.patch),
+        delete: createMethod(() => defaults.delete),
+        options: createMethod(() => defaults.options),
+        head: createMethod(() => defaults.head),
 
         /**
          * The request method lets you pass in any HTTP method but defaults to a
          * GET request. Default config will be applied based on the method used.
          */
-        request: _createMethod((info, init) => {
+        request: createMethod((info, init) => {
             let method = "get";
 
             if (info instanceof Request) {
