@@ -68,9 +68,9 @@ export const callbackStore = <
             store.add(cb);
             return () => store.delete(cb);
         },
-        emit: async (...args) => {
+        emit: async arg => {
             for (const cb of store) {
-                await cb(...args);
+                await cb(arg);
             }
         },
     };

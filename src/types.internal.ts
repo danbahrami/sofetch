@@ -22,8 +22,8 @@ export type CreateMethod = (
  * emitting events to those callbacks.
  */
 export type CallbackStore<
-    TFn extends (...arg: any) => any, // eslint-disable-line @typescript-eslint/no-explicit-any
+    TFn extends (arg: any) => any, // eslint-disable-line @typescript-eslint/no-explicit-any
 > = {
     register: (cb: TFn) => () => void;
-    emit: (...args: Parameters<TFn>) => Promise<void>;
+    emit: (arg: Parameters<TFn>[0]) => Promise<void>;
 };
