@@ -4,34 +4,28 @@ import { CreateMethod, InitDefault } from "@/types.internal";
 import { callbackStore, decorateResponsePromise, mergeInits } from "@/utils";
 
 export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient => {
-    /**
-     * Setup our callback registry
-     */
-    let callbacks = {
-        onRequestStart: callbackStore(options.callbacks?.onRequestStart),
-        onSuccessResponse: callbackStore(options.callbacks?.onSuccessResponse),
-        onErrorResponse: callbackStore(options.callbacks?.onErrorResponse),
-        onClientError: callbackStore(options.callbacks?.onClientError),
+    let config = {
+        baseUrl: options.baseUrl,
+        callbacks: {
+            onRequestStart: callbackStore(options.callbacks?.onRequestStart),
+            onSuccessResponse: callbackStore(options.callbacks?.onSuccessResponse),
+            onErrorResponse: callbackStore(options.callbacks?.onErrorResponse),
+            onClientError: callbackStore(options.callbacks?.onClientError),
+        },
+        defaults: {
+            common: new Array<InitDefault>(options.defaults?.common),
+            get: new Array<InitDefault>({ method: "GET" }, options.defaults?.get),
+            put: new Array<InitDefault>({ method: "PUT" }, options.defaults?.put),
+            post: new Array<InitDefault>({ method: "POST" }, options.defaults?.post),
+            patch: new Array<InitDefault>({ method: "PATCH" }, options.defaults?.patch),
+            delete: new Array<InitDefault>({ method: "DELETE" }, options.defaults?.delete),
+            options: new Array<InitDefault>({ method: "OPTIONS" }, options.defaults?.options),
+            head: new Array<InitDefault>({ method: "HEAD" }, options.defaults?.head),
+        },
     };
 
     /**
-     * Setup out default per-method request inits
-     */
-    let defaults = {
-        common: new Array<InitDefault>(options.defaults?.common),
-        get: new Array<InitDefault>({ method: "GET" }, options.defaults?.get),
-        put: new Array<InitDefault>({ method: "PUT" }, options.defaults?.put),
-        post: new Array<InitDefault>({ method: "POST" }, options.defaults?.post),
-        patch: new Array<InitDefault>({ method: "PATCH" }, options.defaults?.patch),
-        delete: new Array<InitDefault>({ method: "DELETE" }, options.defaults?.delete),
-        options: new Array<InitDefault>({ method: "OPTIONS" }, options.defaults?.options),
-        head: new Array<InitDefault>({ method: "HEAD" }, options.defaults?.head),
-    };
-
-    let baseUrl = options.baseUrl;
-
-    /**
-     * `_createMethod()` is where all the complex stuff happens. It's what we
+     * `createMethod()` is where all the complex stuff happens. It's what we
      * use to build the public methods: `.get()`, `.post()`, `.request()` etc.
      */
     const createMethod: CreateMethod = getDefaultInit => (info, init) => {
@@ -43,11 +37,11 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
                  * default if JSON is passed as the request body.
                  */
                 const { json, ...requestInit } = init ?? {};
-                const defaultInit = getDefaultInit(info, init);
+
                 const combinedRequestInit = mergeInits(
                     json ? { headers: { "content-type": "application/json" } } : undefined,
-                    ...defaults.common,
-                    ...defaultInit,
+                    ...config.defaults.common,
+                    ...getDefaultInit(info, init),
                     requestInit
                 );
 
@@ -56,12 +50,12 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
 
                 if (!(info instanceof Request)) {
                     try {
-                        requestInfo = new URL(info, baseUrl);
+                        requestInfo = new URL(info, config.baseUrl);
                     } catch (e) {
                         throw new TypeError(`Could not build valid URL from parts:
-                                baseUrl: "${baseUrl}"
-                                path: "${info}"
-                            `);
+                            baseUrl: "${config.baseUrl}"
+                            path: "${info}"
+                        `);
                     }
                 }
 
@@ -93,7 +87,7 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
                 /**
                  * Emit to the onRequestStart callback
                  */
-                await callbacks.onRequestStart.emit({ request });
+                await config.callbacks.onRequestStart.emit({ request });
 
                 /**
                  * Make the request
@@ -115,7 +109,7 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
                 /**
                  * Emit 2xx responses and proceed
                  */
-                await callbacks.onSuccessResponse.emit({
+                await config.callbacks.onSuccessResponse.emit({
                     request,
                     response: response.clone(),
                 });
@@ -134,7 +128,7 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
                         return (await response.json()) as T;
                     } catch (e) {
                         const error = new JsonParseError(request, response, e);
-                        await callbacks.onClientError.emit({
+                        await config.callbacks.onClientError.emit({
                             error,
                         });
                         throw error;
@@ -144,12 +138,12 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
                 return decoratedResponse;
             } catch (error) {
                 if (error instanceof HttpError || error instanceof NetworkError) {
-                    await callbacks.onErrorResponse.emit({
+                    await config.callbacks.onErrorResponse.emit({
                         request: error.request,
                         error,
                     });
                 } else {
-                    await callbacks.onClientError.emit({ error });
+                    await config.callbacks.onClientError.emit({ error });
                 }
 
                 throw error;
@@ -160,13 +154,13 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
     };
 
     return {
-        get: createMethod(() => defaults.get),
-        put: createMethod(() => defaults.put),
-        post: createMethod(() => defaults.post),
-        patch: createMethod(() => defaults.patch),
-        delete: createMethod(() => defaults.delete),
-        options: createMethod(() => defaults.options),
-        head: createMethod(() => defaults.head),
+        get: createMethod(() => config.defaults.get),
+        put: createMethod(() => config.defaults.put),
+        post: createMethod(() => config.defaults.post),
+        patch: createMethod(() => config.defaults.patch),
+        delete: createMethod(() => config.defaults.delete),
+        options: createMethod(() => config.defaults.options),
+        head: createMethod(() => config.defaults.head),
 
         /**
          * The request method lets you pass in any HTTP method but defaults to a
@@ -181,40 +175,40 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
                 method = init.method.toLowerCase();
             }
 
-            if (method in defaults) {
-                return defaults[method as keyof typeof defaults];
+            if (method in config.defaults) {
+                return config.defaults[method as keyof typeof config.defaults];
             } else {
                 return [];
             }
         }),
 
         callbacks: {
-            onRequestStart: cb => callbacks.onRequestStart.register(cb),
-            onSuccessResponse: cb => callbacks.onSuccessResponse.register(cb),
-            onErrorResponse: cb => callbacks.onErrorResponse.register(cb),
-            onClientError: cb => callbacks.onClientError.register(cb),
+            onRequestStart: cb => config.callbacks.onRequestStart.register(cb),
+            onSuccessResponse: cb => config.callbacks.onSuccessResponse.register(cb),
+            onErrorResponse: cb => config.callbacks.onErrorResponse.register(cb),
+            onClientError: cb => config.callbacks.onClientError.register(cb),
         },
 
         configure: (options = {}) => {
-            callbacks = {
-                onRequestStart: callbackStore(options.callbacks?.onRequestStart),
-                onSuccessResponse: callbackStore(options.callbacks?.onSuccessResponse),
-                onErrorResponse: callbackStore(options.callbacks?.onErrorResponse),
-                onClientError: callbackStore(options.callbacks?.onClientError),
+            config = {
+                baseUrl: options.baseUrl,
+                callbacks: {
+                    onRequestStart: callbackStore(options.callbacks?.onRequestStart),
+                    onSuccessResponse: callbackStore(options.callbacks?.onSuccessResponse),
+                    onErrorResponse: callbackStore(options.callbacks?.onErrorResponse),
+                    onClientError: callbackStore(options.callbacks?.onClientError),
+                },
+                defaults: {
+                    common: [options.defaults?.common],
+                    get: [{ method: "GET" }, options.defaults?.get],
+                    put: [{ method: "PUT" }, options.defaults?.put],
+                    post: [{ method: "POST" }, options.defaults?.post],
+                    patch: [{ method: "PATCH" }, options.defaults?.patch],
+                    delete: [{ method: "DELETE" }, options.defaults?.delete],
+                    options: [{ method: "OPTIONS" }, options.defaults?.options],
+                    head: [{ method: "HEAD" }, options.defaults?.head],
+                },
             };
-
-            defaults = {
-                common: [options.defaults?.common],
-                get: [{ method: "GET" }, options.defaults?.get],
-                put: [{ method: "PUT" }, options.defaults?.put],
-                post: [{ method: "POST" }, options.defaults?.post],
-                patch: [{ method: "PATCH" }, options.defaults?.patch],
-                delete: [{ method: "DELETE" }, options.defaults?.delete],
-                options: [{ method: "OPTIONS" }, options.defaults?.options],
-                head: [{ method: "HEAD" }, options.defaults?.head],
-            };
-
-            baseUrl = options.baseUrl;
         },
     };
 };
