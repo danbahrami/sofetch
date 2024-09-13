@@ -1,6 +1,6 @@
 {
     "name": "@danbahrami/sofetch",
-    "version": "1.0.0-1",
+    "version": "1.0.0-2",
     "module": "./dist/sofetch.js",
     "type": "module",
     "exports": {
