@@ -53,5 +53,29 @@
         "typescript": "^5.3.3",
         "vite": "^5.3.5",
         "vitest": "^2.0.4"
-    }
+    },
+    "description": "A simple & elegant fetch client.",
+    "main": "dist/sofetch.js",
+    "repository": {
+        "type": "git",
+        "url": "danbahrami/sofetch.git"
+    },
+    "keywords": [
+        "fetch",
+        "http",
+        "js",
+        "ts",
+        "javascript",
+        "typescript"
+    ],
+    "author": {
+        "name": "Dan Bahrami",
+        "email": "danbahrami@gmail.com",
+        "url": "https://danbahrami.hashnode.dev/"
+    },
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/danbahrami/sofetch/issues"
+    },
+    "homepage": "https://github.com/danbahrami/sofetch#readme"
 }
