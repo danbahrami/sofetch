@@ -16,19 +16,25 @@ describe("createClient", () => {
     test("It creates a client and lets you register some default properties for different requests", async () => {
         nock(HOST)
             .post("/api/user", { id: "6686" })
+            .matchHeader("Accept", "JSON")
             .matchHeader("X-CSRF", "token-123")
             .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 })
             .get("/api/user")
+            .matchHeader("Accept", "JSON")
             .matchHeader("X-CSRF", "token-456")
             .reply(200, { firstName: "Bob", lastName: "Dylan", age: 83 });
 
         const f = createClient({
             defaults: {
-                request: {
-                    method: "POST",
-                    headers: {
+                common: {
+                    headers: new Headers({
+                        Accept: "JSON",
+                    }),
+                },
+                post: {
+                    headers: new Headers({
                         "X-CSRF": "token-123",
-                    },
+                    }),
                 },
                 get: {
                     headers: new Headers({
@@ -39,12 +45,43 @@ describe("createClient", () => {
         });
 
         const response1 = await f
-            .request(HOST + "/api/user", { json: { id: "6686" } })
+            .request(HOST + "/api/user", { method: "post", json: { id: "6686" } })
             .json<User>();
         const response2 = await f.get(HOST + "/api/user").json<User>();
 
         expect(response1).toEqual({ firstName: "Shane", lastName: "MacGowan", age: 65 });
         expect(response2).toEqual({ firstName: "Bob", lastName: "Dylan", age: 83 });
+    });
+
+    test("You can provide default property factory functions to create new defaults with each request", async () => {
+        nock(HOST)
+            .post("/api/user", { id: "6686" })
+            .matchHeader("Accept", "JSON")
+            .matchHeader("X-CSRF", "token-0")
+            .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 })
+            .post("/api/user", { id: "6686" })
+            .matchHeader("Accept", "JSON")
+            .matchHeader("X-CSRF", "token-1")
+            .reply(200, { firstName: "Bob", lastName: "Dylan", age: 83 });
+
+        let i = 0;
+        const f = createClient({
+            defaults: {
+                common: {
+                    headers: new Headers({
+                        Accept: "JSON",
+                    }),
+                },
+                post: () => ({
+                    headers: new Headers({
+                        "X-CSRF": `token-${i++}`,
+                    }),
+                }),
+            },
+        });
+
+        await f.post(HOST + "/api/user", { json: { id: "6686" } });
+        await f.post(HOST + "/api/user", { json: { id: "6686" } });
     });
 
     test("The order of precedence for configs is common default -> method default -> request", async () => {

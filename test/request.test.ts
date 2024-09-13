@@ -1,5 +1,5 @@
 import nock from "nock";
-import { describe, test, expect } from "vitest";
+import { describe, test, expect, beforeAll, afterAll } from "vitest";
 
 import { f, HttpError, JsonParseError, JsonStringifyError, NetworkError } from "../src";
 
@@ -137,6 +137,72 @@ describe("f.request()", () => {
             expect(response).toBeInstanceOf(Response);
             expect(response.status).toBe(200);
             expect(response.statusText).toBe("OK");
+        });
+    });
+
+    describe("Defaults", () => {
+        beforeAll(() => {
+            f.configure({
+                defaults: {
+                    common: {
+                        headers: {
+                            "common-header": "common",
+                            "method-header": "none",
+                        },
+                    },
+                    get: {
+                        headers: {
+                            "method-header": "get",
+                        },
+                    },
+                    post: {
+                        headers: {
+                            "method-header": "post",
+                        },
+                    },
+                },
+            });
+        });
+
+        afterAll(() => {
+            f.configure(); // reset
+        });
+
+        test("By default it uses the `get` method default init", async () => {
+            nock(HOST)
+                .get("/api/user")
+                .matchHeader("common-header", "common")
+                .matchHeader("method-header", "get")
+                .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 });
+
+            const user = await f.request(HOST + "/api/user").json<User>();
+            expect(user).toEqual({ firstName: "Shane", lastName: "MacGowan", age: 65 });
+        });
+
+        test("When you provide a method it uses that to pick a default init", async () => {
+            nock(HOST)
+                .post("/api/user")
+                .matchHeader("common-header", "common")
+                .matchHeader("method-header", "post")
+                .twice()
+                .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 });
+
+            const user = await f.request(HOST + "/api/user", { method: "post" }).json<User>();
+            const user2 = await f.request(HOST + "/api/user", { method: "POST" }).json<User>();
+            expect(user).toEqual({ firstName: "Shane", lastName: "MacGowan", age: 65 });
+            expect(user2).toEqual({ firstName: "Shane", lastName: "MacGowan", age: 65 });
+        });
+
+        test("When you provide an invalid method it doesnt use any default", async () => {
+            nock(HOST)
+                .intercept("/api/user", "bloop")
+                .matchHeader("common-header", "common")
+                .matchHeader("method-header", "none")
+                .twice()
+                .reply(200, { firstName: "Shane", lastName: "MacGowan", age: 65 });
+
+            const user = await f.request(HOST + "/api/user", { method: "bloop" }).json<User>();
+            expect(user).toEqual({ firstName: "Shane", lastName: "MacGowan", age: 65 });
         });
     });
 

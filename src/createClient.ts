@@ -1,5 +1,11 @@
 import { HttpError, JsonParseError, JsonStringifyError, NetworkError } from "@/errors";
-import { SoFetchClient, SoFetchClientOptions, DecoratedResponse, RequestInitArg } from "@/types";
+import {
+    SoFetchClient,
+    SoFetchClientOptions,
+    DecoratedResponse,
+    RequestInitArg,
+    CreateMethod,
+} from "@/types";
 import { callbackStore, decorateResponsePromise, mergeInits } from "@/utils";
 
 export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient => {
@@ -18,7 +24,6 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
      */
     let defaults = {
         common: new Array<RequestInitArg>(options.defaults?.common),
-        request: new Array<RequestInitArg>(options.defaults?.request),
         get: new Array<RequestInitArg>({ method: "GET" }, options.defaults?.get),
         put: new Array<RequestInitArg>({ method: "PUT" }, options.defaults?.put),
         post: new Array<RequestInitArg>({ method: "POST" }, options.defaults?.post),
@@ -34,135 +39,132 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
      * `_createMethod()` is where all the complex stuff happens. It's what we
      * use to build the public methods: `.get()`, `.post()`, `.request()` etc.
      */
-    const _createMethod = (getDefaultInit: () => RequestInitArg[]) => {
-        return (info: RequestInfo | URL, init?: RequestInit & { json?: unknown }) => {
-            const result = (async (): Promise<DecoratedResponse> => {
-                try {
-                    /**
-                     * Combine the incoming RequestInit with the default RequestInit
-                     * and set "content-type" header to "application/json" by
-                     * default if JSON is passed as the request body.
-                     */
-                    const { json, ...requestInit } = init ?? {};
-                    const combinedRequestInit = mergeInits(
-                        json ? { headers: { "content-type": "application/json" } } : undefined,
-                        ...defaults.common,
-                        ...getDefaultInit(),
-                        requestInit
-                    );
+    const _createMethod: CreateMethod = getDefaultInit => (info, init) => {
+        const result = (async (): Promise<DecoratedResponse> => {
+            try {
+                /**
+                 * Combine the incoming RequestInit with the default RequestInit
+                 * and set "content-type" header to "application/json" by
+                 * default if JSON is passed as the request body.
+                 */
+                const { json, ...requestInit } = init ?? {};
+                const defaultInit = getDefaultInit(info, init);
+                const combinedRequestInit = mergeInits(
+                    json ? { headers: { "content-type": "application/json" } } : undefined,
+                    ...defaults.common,
+                    ...defaultInit,
+                    requestInit
+                );
 
-                    // Append the base URL
-                    let requestInfo = info;
+                // Append the base URL
+                let requestInfo = info;
 
-                    if (!(info instanceof Request)) {
-                        try {
-                            requestInfo = new URL(info, baseUrl);
-                        } catch (e) {
-                            throw new TypeError(`Could not build valid URL from parts:
+                if (!(info instanceof Request)) {
+                    try {
+                        requestInfo = new URL(info, baseUrl);
+                    } catch (e) {
+                        throw new TypeError(`Could not build valid URL from parts:
                                 baseUrl: "${baseUrl}"
                                 path: "${info}"
                             `);
-                        }
                     }
+                }
 
-                    /**
-                     * If JSON has been passed then stringify it. If the JSON cannot
-                     * be serialized then throw JsonStringifyError and emit to the
-                     * onJsonStringifyError callback
-                     */
-                    if (json) {
-                        try {
-                            combinedRequestInit.body = JSON.stringify(json);
-                        } catch (e) {
-                            throw new JsonStringifyError(
-                                new Request(requestInfo, combinedRequestInit), // we don't have a Request instance yet but build one to attach to this error
-                                json,
-                                e
-                            );
-                        }
-                    }
-
-                    /**
-                     * Build the request by first combining all the request options
-                     * and then passing it through any `beforeRequest` modifiers
-                     */
-                    const request = new Request(requestInfo, combinedRequestInit);
-
-                    /**
-                     * Emit to the onRequestStart callback
-                     */
-                    await callbacks.onRequestStart.emit({ request });
-
-                    /**
-                     * Make the request
-                     */
-                    let response: Response;
+                /**
+                 * If JSON has been passed then stringify it. If the JSON cannot
+                 * be serialized then throw JsonStringifyError and emit to the
+                 * onJsonStringifyError callback
+                 */
+                if (json) {
                     try {
-                        response = await fetch(request);
+                        combinedRequestInit.body = JSON.stringify(json);
                     } catch (e) {
-                        throw new NetworkError(request, e);
+                        throw new JsonStringifyError(
+                            // we don't have a Request instance yet but build
+                            // one to attach to this error
+                            new Request(requestInfo, combinedRequestInit),
+                            json,
+                            e
+                        );
                     }
+                }
 
-                    /**
-                     * Convert non `2xx` responses into an HttpError
-                     */
-                    if (!response.ok) {
-                        throw new HttpError(request, response.clone());
-                    }
+                /**
+                 * Build the request by first combining all the request options
+                 * and then passing it through any `beforeRequest` modifiers
+                 */
+                const request = new Request(requestInfo, combinedRequestInit);
 
-                    /**
-                     * Emit 2xx responses and proceed
-                     */
-                    await callbacks.onSuccessResponse.emit({
-                        request,
-                        response: response.clone(),
-                    });
+                /**
+                 * Emit to the onRequestStart callback
+                 */
+                await callbacks.onRequestStart.emit({ request });
 
-                    /**
-                     * Enhance the `.json()` method of the response so that it:
-                     * 1. Accepts an optional generic type as the response
-                     * 2. Emits to the onJsonParseError callback when the
-                     *    response cannot be parsed to JSON. This allows us to
-                     *    catch cases where the client is expecting JSON but the
-                     *    server unexpectedly returns HTML.
-                     */
-                    const decoratedResponse = response.clone() as DecoratedResponse;
-                    decoratedResponse.json = async <T = unknown>() => {
-                        try {
-                            return (await response.json()) as T;
-                        } catch (e) {
-                            const error = new JsonParseError(request, response, e);
-                            await callbacks.onClientError.emit({
-                                error,
-                            });
-                            throw error;
-                        }
-                    };
+                /**
+                 * Make the request
+                 */
+                let response: Response;
+                try {
+                    response = await fetch(request);
+                } catch (e) {
+                    throw new NetworkError(request, e);
+                }
 
-                    return decoratedResponse;
-                } catch (error) {
-                    if (error instanceof HttpError || error instanceof NetworkError) {
-                        await callbacks.onErrorResponse.emit({
-                            request: error.request,
+                /**
+                 * Convert non `2xx` responses into an HttpError
+                 */
+                if (!response.ok) {
+                    throw new HttpError(request, response.clone());
+                }
+
+                /**
+                 * Emit 2xx responses and proceed
+                 */
+                await callbacks.onSuccessResponse.emit({
+                    request,
+                    response: response.clone(),
+                });
+
+                /**
+                 * Enhance the `.json()` method of the response so that it:
+                 * 1. Accepts an optional generic type as the response
+                 * 2. Emits to the onJsonParseError callback when the response
+                 *    cannot be parsed to JSON. This allows us to catch cases
+                 *    where the client is expecting JSON but the server
+                 *    unexpectedly returns HTML.
+                 */
+                const decoratedResponse = response.clone() as DecoratedResponse;
+                decoratedResponse.json = async <T = unknown>() => {
+                    try {
+                        return (await response.json()) as T;
+                    } catch (e) {
+                        const error = new JsonParseError(request, response, e);
+                        await callbacks.onClientError.emit({
                             error,
                         });
-
                         throw error;
                     }
+                };
 
+                return decoratedResponse;
+            } catch (error) {
+                if (error instanceof HttpError || error instanceof NetworkError) {
+                    await callbacks.onErrorResponse.emit({
+                        request: error.request,
+                        error,
+                    });
+                } else {
                     await callbacks.onClientError.emit({ error });
-
-                    throw error;
                 }
-            })();
 
-            return decorateResponsePromise(result);
-        };
+                throw error;
+            }
+        })();
+
+        return decorateResponsePromise(result);
     };
 
     return {
-        request: _createMethod(() => defaults.request),
-
         get: _createMethod(() => defaults.get),
         put: _createMethod(() => defaults.put),
         post: _createMethod(() => defaults.post),
@@ -171,6 +173,26 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
         options: _createMethod(() => defaults.options),
         head: _createMethod(() => defaults.head),
 
+        /**
+         * The request method lets you pass in any HTTP method but defaults to a
+         * GET request. Default config will be applied based on the method used.
+         */
+        request: _createMethod((info, init) => {
+            let method = "get";
+
+            if (info instanceof Request) {
+                method = info.method.toLowerCase();
+            } else if (init?.method) {
+                method = init.method.toLowerCase();
+            }
+
+            if (method in defaults) {
+                return defaults[method as keyof typeof defaults];
+            } else {
+                return [];
+            }
+        }),
+
         callbacks: {
             onRequestStart: cb => callbacks.onRequestStart.register(cb),
             onSuccessResponse: cb => callbacks.onSuccessResponse.register(cb),
@@ -178,7 +200,7 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
             onClientError: cb => callbacks.onClientError.register(cb),
         },
 
-        configure: (options: SoFetchClientOptions = {}) => {
+        configure: (options = {}) => {
             callbacks = {
                 onRequestStart: callbackStore(options.callbacks?.onRequestStart),
                 onSuccessResponse: callbackStore(options.callbacks?.onSuccessResponse),
@@ -188,7 +210,6 @@ export const createClient = (options: SoFetchClientOptions = {}): SoFetchClient 
 
             defaults = {
                 common: [options.defaults?.common],
-                request: [options.defaults?.request],
                 get: [{ method: "GET" }, options.defaults?.get],
                 put: [{ method: "PUT" }, options.defaults?.put],
                 post: [{ method: "POST" }, options.defaults?.post],

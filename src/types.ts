@@ -159,3 +159,7 @@ export type CallbackStore<
     register: (cb: TFn) => () => void;
     emit: (...args: Parameters<TFn>) => Promise<void>;
 };
+
+export type CreateMethod = (
+    getDefaultInit: (info: RequestInfo | URL, init?: RequestInit) => RequestInitArg[]
+) => (info: RequestInfo | URL, init?: RequestInit & { json?: unknown }) => DecoratedResponsePromise;
